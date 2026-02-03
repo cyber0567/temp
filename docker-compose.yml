@@ -1,4 +1,2 @@
-# Database: Supabase PostgreSQL only. No local Postgres service.
-# Set DATABASE_URL in backend/.env (local) or backend/.env.local (prod).
-# Connection string format: postgresql://postgres:PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres
+# Database: Supabase PostgreSQL or any Postgres. Set DATABASE_URL in src/.env or src/.env.local.
 services: {}
