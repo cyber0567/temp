@@ -1,47 +1,54 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { WebSocketStatus } from "@/components/websocket-status";
+import Link from "next/link";
+import { EmailSignInForm } from "@/components/auth/email-sign-in-form";
+import { SignInGoogleButton } from "@/components/auth/sign-in-google-button";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-6 py-16">
-      <main className="w-full max-w-4xl space-y-10">
-        <div className="space-y-3 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-            NextJS Frontend Starter
-          </h1>
-          <p className="text-muted-foreground">
-            TailwindCSS + shadcn/ui with a live WebSocket connection to the backend.
-          </p>
-        </div>
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>WebSocket Status</CardTitle>
-              <CardDescription>Connects to the backend WebSocket server.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <WebSocketStatus />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>OAuth Ready</CardTitle>
-              <CardDescription>NextAuth + GitHub OAuth configured on backend.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-muted-foreground">
-              <p>
-                Set <span className="text-foreground">GITHUB_CLIENT_ID</span> and{" "}
-                <span className="text-foreground">GITHUB_CLIENT_SECRET</span> in
-                the backend environment.
-              </p>
-              <p>
-                After connecting your database, run{" "}
-                <span className="text-foreground">npx prisma migrate dev</span>{" "}
-                in the backend to create auth tables.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-100 via-slate-50 to-white px-6 py-16">
+      <main className="w-full max-w-sm">
+        <Card className="border-none bg-white/90 shadow-2xl shadow-slate-200/60">
+          <CardContent className="px-8 py-10">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full border border-slate-200 bg-white text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 shadow-lg">
+                LOGO
+              </div>
+              <h1 className="text-2xl font-semibold text-slate-900">
+                App Title
+              </h1>
+              <p className="text-sm text-slate-500">Sign in to continue</p>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              {process.env.GOOGLE_CLIENT_ID ? (
+                <SignInGoogleButton />
+              ) : (
+                <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-800">
+                  Set <code className="font-mono text-xs">GOOGLE_CLIENT_ID</code> and{" "}
+                  <code className="font-mono text-xs">GOOGLE_CLIENT_SECRET</code> in{" "}
+                  <code className="font-mono text-xs">.env.local</code> to enable Google sign-in.
+                </p>
+              )}
+
+              <div className="flex items-center gap-3 text-xs text-slate-400">
+                <span className="h-px flex-1 bg-slate-200" />
+                OR
+                <span className="h-px flex-1 bg-slate-200" />
+              </div>
+
+              <EmailSignInForm />
+
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <button className="hover:text-slate-700" type="button">
+                  Forgot password?
+                </button>
+                <Link href="/signup" className="hover:text-slate-700">
+                  Need an account? <span className="font-semibold">Sign up</span>
+                </Link>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

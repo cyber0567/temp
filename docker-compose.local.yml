@@ -1,20 +1,19 @@
+# Database: Supabase PostgreSQL. Set DATABASE_URL in backend/.env (Supabase connection string).
 services:
   backend:
     image: node:20-alpine
     working_dir: /app
     command: sh -c "npm install && npm run dev"
     env_file:
-      - ./backend/.env.local
+      - ./backend/.env
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/next_auth
       NEXTAUTH_URL: http://localhost:3001
+      # DATABASE_URL from backend/.env (Supabase)
     volumes:
       - ./backend:/app
       - backend_node_modules:/app/node_modules
     ports:
       - "3001:3001"
-    depends_on:
-      - postgres
   frontend:
     image: node:20-alpine
     working_dir: /app

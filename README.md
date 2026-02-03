@@ -5,6 +5,8 @@ This repository contains two NextJS apps:
 - `frontend`: TailwindCSS + shadcn/ui starter with a WebSocket client
 - `backend`: NextAuth + PostgreSQL (Prisma) + WebSocket server
 
+Database: **Supabase PostgreSQL** (no local Postgres).
+
 ## Quick start
 
 1. Install dependencies:
@@ -16,8 +18,8 @@ cd ../frontend && npm install
 
 2. Configure environment variables:
 
-- `backend/.env` from `backend/.env.example`
-- `frontend/.env.local` from `frontend/.env.example`
+- Copy `backend/.env.example` to `backend/.env.local` and set `DATABASE_URL` (Supabase connection string)
+- Copy `frontend/.env.example` to `frontend/.env.local`
 
 3. Set up the database:
 
