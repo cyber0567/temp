@@ -1,11 +1,11 @@
-# Database: Supabase PostgreSQL. Set DATABASE_URL in src/.env (Supabase connection string).
+# Database: Supabase PostgreSQL. Set DATABASE_URL in .env (Supabase connection string).
 services:
   app:
     image: node:20-alpine
     working_dir: /app
     command: sh -c "npm install && npm run dev"
     env_file:
-      - ./src/.env.local
+      - ./.env.local
     environment:
       NEXTAUTH_URL: http://localhost:3000
     volumes:
