@@ -1,52 +1,36 @@
-# MVP – Single Next.js App (Vercel-ready)
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-One Next.js app with:
+## Getting Started
 
-- **NextAuth** (database sessions via Prisma)
-- **PostgreSQL** (Prisma 7 + `@prisma/adapter-pg`)
-- **Auth**: Email/password (Credentials) + Google OAuth
-- **Tailwind** + shadcn-style UI
-
-Database: use **Supabase PostgreSQL** or any Postgres (e.g. Neon, Vercel Postgres).
-
-## Quick start
-
-1. **Install and generate Prisma client**
+First, run the development server:
 
 ```bash
-cd src && npm install
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-2. **Environment variables**
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-- Copy `src/.env.example` to `src/.env.local`
-- Set `DATABASE_URL` (Postgres connection string)
-- Optional: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_SECRET`
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-3. **Database**
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-```bash
-cd src
-npx prisma migrate dev --name init
-```
+## Learn More
 
-4. **Run**
+To learn more about Next.js, take a look at the following resources:
 
-```bash
-cd src && npm run dev
-```
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-App: `http://localhost:3000`.
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy to Vercel
+## Deploy on Vercel
 
-1. In Vercel, create a project from this repo.
-2. Set **Root Directory** to `src`.
-3. Add environment variables in the Vercel project:
-   - `DATABASE_URL` (required, e.g. Supabase or Neon connection string)
-   - `NEXTAUTH_SECRET` (required)
-   - `NEXTAUTH_URL` = `https://<your-vercel-domain>`
-   - Optional: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` for Google sign-in
-4. Deploy. Run migrations against your production DB (e.g. `npx prisma migrate deploy` from `src` with `DATABASE_URL` set).
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-**Note:** WebSocket (`/ws`) is not supported on Vercel serverless. The WebSocket status component will show “unavailable” unless you set `NEXT_PUBLIC_WS_URL` to an external WebSocket server.
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
