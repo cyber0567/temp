@@ -15,7 +15,18 @@ import './config/passport';
 const app = express();
 const server = createServer(app);
 
-app.use(cors({ origin: env.frontendUrl, credentials: true }));
+// CORS: accept origin with or without trailing slash (browsers send no trailing slash)
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (!origin || !env.frontendUrl) return cb(null, true);
+      const allowed = env.frontendUrl.replace(/\/$/, '');
+      const match = origin === allowed || origin === env.frontendUrl;
+      cb(null, match ? origin : false);
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // Type assertions for express-session/passport @types compatibility with express
