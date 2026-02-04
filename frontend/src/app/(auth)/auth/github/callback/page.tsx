@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { api, type ApiError } from "@/lib/api";
 
-export default function GithubCallbackPage() {
+function GithubCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
@@ -65,4 +65,18 @@ export default function GithubCallbackPage() {
   }
 
   return null;
+}
+
+export default function GithubCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#F8F9FA]">
+          <p className="text-gray-600">Signing you in…</p>
+        </div>
+      }
+    >
+      <GithubCallbackContent />
+    </Suspense>
+  );
 }

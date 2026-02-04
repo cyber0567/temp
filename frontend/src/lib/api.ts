@@ -72,4 +72,17 @@ export const api = {
       body: JSON.stringify({ code, redirect_uri: redirectUri }),
     });
   },
+
+  /** Returns the Google OAuth URL (redirect goes to frontend /auth/google/callback). */
+  async getGoogleAuthUrl(): Promise<OAuthAuthResponse> {
+    return request<OAuthAuthResponse>("/auth/google", { method: "GET" });
+  },
+
+  /** Exchange Google OAuth code for user/token (callback page). */
+  async exchangeGoogleCode(code: string, redirectUri?: string): Promise<LoginResponse> {
+    return request<LoginResponse>("/auth/google/exchange", {
+      method: "POST",
+      body: JSON.stringify({ code, redirect_uri: redirectUri }),
+    });
+  },
 };
