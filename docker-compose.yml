@@ -1,2 +1,0 @@
-# Database: Supabase PostgreSQL or any Postgres. Set DATABASE_URL in .env or .env.local.
-services: {}

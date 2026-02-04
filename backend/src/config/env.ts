@@ -1,0 +1,38 @@
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+/** All values from .env; see .env.example for required variables. */
+const raw = {
+  port: process.env.PORT ?? '3001',
+  nodeEnv: process.env.NODE_ENV ?? 'development',
+  supabaseUrl: process.env.SUPABASE_URL ?? '',
+  supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? '',
+  frontendUrl: process.env.FRONTEND_URL ?? '',
+  apiBaseUrl: process.env.API_BASE_URL ?? '',
+  sessionSecret: process.env.SESSION_SECRET ?? '',
+  googleClientId: process.env.GOOGLE_CLIENT_ID ?? '',
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+  googleCallbackUrl: process.env.CALLBACK_URL ?? '',
+};
+
+export const env = {
+  port: parseInt(raw.port, 10),
+  nodeEnv: raw.nodeEnv,
+  supabaseUrl: raw.supabaseUrl,
+  supabaseServiceKey: raw.supabaseServiceKey,
+  supabaseAnonKey: raw.supabaseAnonKey,
+  frontendUrl: raw.frontendUrl,
+  apiBaseUrl: raw.apiBaseUrl,
+  sessionSecret: (() => {
+    if (raw.sessionSecret) return raw.sessionSecret;
+    if (raw.nodeEnv === 'production') {
+      throw new Error('SESSION_SECRET must be set in .env when NODE_ENV=production');
+    }
+    return 'dev-session-secret-do-not-use-in-production';
+  })(),
+  googleClientId: raw.googleClientId,
+  googleClientSecret: raw.googleClientSecret,
+  googleCallbackUrl: raw.googleCallbackUrl,
+};

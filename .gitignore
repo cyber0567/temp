@@ -1,22 +1,43 @@
-# dependencies
-**/node_modules/
+# Dependencies
+node_modules/
 
-# build output
-**/.next/
-**/out/
-**/dist/
-**/.turbo/
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# logs
-**/*.log
+# Build outputs
+.next/
+dist/
+build/
+out/
+
+# Debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.pnpm-debug.log*
 
-# environment files
-.env
-.env.*
-!.env.local
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
 
-# misc
+# OS
 .DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+*.log
+.cache/
