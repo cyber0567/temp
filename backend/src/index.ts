@@ -18,6 +18,7 @@ const server = createServer(app);
 app.use(cors({ origin: env.frontendUrl, credentials: true }));
 app.use(express.json());
 
+// Type assertions for express-session/passport @types compatibility with express
 app.use(
   session({
     secret: env.sessionSecret,
@@ -27,10 +28,10 @@ app.use(
       secure: env.nodeEnv === 'production',
       maxAge: 24 * 60 * 60 * 1000,
     },
-  })
+  }) as any
 );
-app.use(passport.initialize());
-app.use(passport.session());
+app.use(passport.initialize() as any);
+app.use(passport.session() as any);
 
 app.use('/auth', authRoutes);
 
