@@ -32,10 +32,10 @@ export function CampaignCommandCenter() {
             </div>
             <div className="flex gap-3">
               <Button
-                variant="primary"
+                variant="outline"
                 size="md"
                 leftIcon={<Plus className="h-4 w-4" />}
-                className="border-0 bg-white text-indigo-700 hover:bg-white/90"
+                className="border-white/50 text-white hover:bg-white/10 hover:text-white"
               >
                 New Request
               </Button>
