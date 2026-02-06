@@ -7,6 +7,8 @@ import { env } from '../config/env';
 import type { SignUpBody, LoginBody, ForgotPasswordBody } from '../types';
 import type { PassportUser } from '../config/passport';
 import { googleCallbackUrl } from '../config/passport';
+import { getRingCentralSDK, isRingCentralConfigured } from '../config/ringcentral';
+import { requireAuth, AuthenticatedRequest } from '../middleware/auth';
 
 const router = Router();
 const SALT_ROUNDS = 10;
@@ -186,5 +188,71 @@ router.get(
     res.redirect(`${env.frontendUrl}/auth/callback?token=${encodeURIComponent(token)}&user=${userJson}`);
   }
 );
+
+/** POST /auth/ringcentral - get RingCentral OAuth URL (requires JWT). Frontend redirects user to returned authUrl. */
+router.post('/ringcentral', requireAuth, (req: Request, res: Response): void => {
+  if (!isRingCentralConfigured()) {
+    res.status(503).json({ error: 'RingCentral OAuth is not configured' });
+    return;
+  }
+  const authReq = req as AuthenticatedRequest;
+  const userId = authReq.user?.sub;
+  if (!userId) {
+    res.status(401).json({ error: 'Authentication required' });
+    return;
+  }
+  try {
+    const sdk = getRingCentralSDK();
+    const platform = sdk.platform();
+    const authUrl = platform.loginUrl({ state: userId });
+    res.json({ authUrl });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to initiate RingCentral OAuth' });
+  }
+});
+
+/** GET /auth/ringcentral/callback - RingCentral OAuth callback */
+router.get('/ringcentral/callback', async (req: Request, res: Response): Promise<void> => {
+  const { code, state } = req.query as { code?: string; state?: string };
+  if (!code || !state) {
+    res.redirect(`${env.frontendUrl}/dashboard?error=ringcentral_missing_code`);
+    return;
+  }
+  const userId = state;
+  try {
+    const sdk = getRingCentralSDK();
+    const platform = sdk.platform();
+    await platform.login({ code });
+    const token = await platform.auth().data();
+    const accessToken = (token as { access_token?: string }).access_token;
+    const refreshToken = (token as { refresh_token?: string }).refresh_token;
+    const expiresIn = (token as { expires_in?: number }).expires_in ?? 3600;
+    if (!accessToken || !refreshToken) {
+      res.redirect(`${env.frontendUrl}/dashboard?error=ringcentral_no_tokens`);
+      return;
+    }
+    const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
+    await supabase.from('ringcentral_tokens').upsert(
+      { user_id: userId, access_token: accessToken, refresh_token: refreshToken, expires_at: expiresAt, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id' }
+    );
+    res.redirect(`${env.frontendUrl}/dashboard?ringcentral=connected`);
+  } catch (e) {
+    console.error('RingCentral OAuth error:', e);
+    res.redirect(`${env.frontendUrl}/dashboard?error=ringcentral_failed`);
+  }
+});
+
+/** GET /auth/ringcentral/status - check if user has RingCentral linked (requires auth) */
+router.get('/ringcentral/status', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const authReq = req as AuthenticatedRequest;
+  const userId = authReq.user?.sub;
+  if (!userId) {
+    res.status(401).json({ error: 'Authentication required' });
+    return;
+  }
+  const { data } = await supabase.from('ringcentral_tokens').select('id').eq('user_id', userId).single();
+  res.json({ connected: !!data });
+});
 
 export default router;

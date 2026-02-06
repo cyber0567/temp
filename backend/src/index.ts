@@ -7,6 +7,8 @@ import { WebSocketServer } from 'ws';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import authRoutes from './routes/auth';
+import orgsRoutes from './routes/orgs';
+import adminRoutes from './routes/admin';
 import { requireAuth, AuthenticatedRequest } from './middleware/auth';
 import { env } from './config/env';
 import { supabase } from './config/supabase';
@@ -45,6 +47,8 @@ app.use(passport.initialize() as any);
 app.use(passport.session() as any);
 
 app.use('/auth', authRoutes);
+app.use('/orgs', orgsRoutes);
+app.use('/admin', adminRoutes);
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() });
@@ -80,12 +84,28 @@ app.get('/db-check', async (_req, res) => {
   }
 });
 
-app.get('/me', requireAuth, (req, res) => {
+app.get('/me', requireAuth, async (req, res) => {
   const authReq = req as AuthenticatedRequest;
+  const userId = authReq.user?.sub;
+  if (!userId) {
+    res.json({ user: null, orgs: [] });
+    return;
+  }
+  const [{ data: profile }, { data: members }] = await Promise.all([
+    supabase.from('profiles').select('platform_role').eq('id', userId).single(),
+    supabase.from('organization_members').select('org_id, role').eq('user_id', userId),
+  ]);
+  const platformRole = (profile?.platform_role as string) ?? 'rep';
+  const orgIds = (members ?? []).map((m) => m.org_id);
+  let orgs: { id: string; name: string; slug: string; role: string }[] = [];
+  if (orgIds.length > 0) {
+    const { data: orgRows } = await supabase.from('organizations').select('id, name, slug').in('id', orgIds);
+    const roleByOrg = new Map((members ?? []).map((m) => [m.org_id, m.role]));
+    orgs = (orgRows ?? []).map((o) => ({ ...o, role: roleByOrg.get(o.id) ?? 'member' }));
+  }
   res.json({
-    user: authReq.user
-      ? { id: authReq.user.sub, email: authReq.user.email }
-      : null,
+    user: { id: authReq.user!.sub, email: authReq.user!.email, platformRole },
+    orgs,
   });
 });
 

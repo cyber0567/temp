@@ -16,11 +16,14 @@ import {
   ChevronDown,
   ChevronUp,
   LogOut,
+  Shield,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useUser } from "@/contexts/UserContext";
 
 const mainNav = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard/management", label: "Roles & Orgs", icon: Shield },
   { href: "/dashboard/rep-portal", label: "Rep Portal", icon: Users },
   { href: "/dashboard/command-center", label: "Client Command Center", icon: Zap },
   { href: "/dashboard/metrics", label: "Business Metrics", icon: BarChart3 },
@@ -50,25 +53,13 @@ const expandableNav = [
   { label: "AI Lead Engagement", icon: Bolt, href: "/dashboard/ai-lead", subItems: [] },
 ];
 
-type UserInfo = { id: string; email?: string; name?: string } | null;
-
 export function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<UserInfo>(null);
+  const { user, platformRole, orgs } = useUser();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     Talent: true,
   });
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = localStorage.getItem("user");
-      setUser(raw ? (JSON.parse(raw) as UserInfo) : null);
-    } catch {
-      setUser(null);
-    }
-  }, []);
 
   function handleLogout() {
     if (typeof window !== "undefined") {
@@ -183,10 +174,15 @@ export function DashboardSidebar() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-zinc-200">
-              {user?.name ?? user?.email ?? "User"}
+              {user?.email ?? "User"}
             </p>
             <p className="truncate text-xs text-zinc-500">
-              {user?.email ?? "—"}
+              {platformRole === "super_admin"
+                ? "Super Admin"
+                : platformRole === "admin"
+                  ? "Admin"
+                  : "Rep"}
+              {orgs.length > 0 && ` · ${orgs.length} org${orgs.length > 1 ? "s" : ""}`}
             </p>
           </div>
           <button

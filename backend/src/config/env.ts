@@ -15,6 +15,10 @@ const raw = {
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? '',
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
   googleCallbackUrl: process.env.CALLBACK_URL ?? '',
+  ringcentralClientId: process.env.RINGCENTRAL_CLIENT_ID ?? '',
+  ringcentralClientSecret: process.env.RINGCENTRAL_CLIENT_SECRET ?? '',
+  ringcentralServer: process.env.RINGCENTRAL_SERVER ?? 'https://platform.ringcentral.com',
+  ringcentralCallbackUrl: process.env.RINGCENTRAL_CALLBACK_URL ?? '',
 };
 
 export const env = {
@@ -35,4 +39,8 @@ export const env = {
   googleClientId: raw.googleClientId,
   googleClientSecret: raw.googleClientSecret,
   googleCallbackUrl: raw.googleCallbackUrl,
+  ringcentralClientId: raw.ringcentralClientId,
+  ringcentralClientSecret: raw.ringcentralClientSecret,
+  ringcentralServer: raw.ringcentralServer,
+  ringcentralCallbackUrl: raw.ringcentralCallbackUrl,
 };
