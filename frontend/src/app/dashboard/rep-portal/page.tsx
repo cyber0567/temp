@@ -1,5 +1,5 @@
-import { CampaignCommandCenter } from "@/components/dashboard/CampaignCommandCenter";
+import { RepPortal } from "@/components/dashboard/RepPortal";
 
 export default function RepPortalPage() {
-  return <CampaignCommandCenter />;
+  return <RepPortal />;
 }
