@@ -33,13 +33,7 @@ const DEFAULT_CHECKLIST = [
 ];
 
 const MOCK_LINES: { speaker: "agent" | "customer"; text: string }[] = [
-  { speaker: "agent", text: "Hi, this is Sarah from TechCorp Solutions. May I speak with the account holder?" },
-  { speaker: "customer", text: "Yes, this is James." },
-  { speaker: "agent", text: "Thanks, James. I'm calling about your current service plan. Do you have a moment?" },
-  { speaker: "customer", text: "Sure, go ahead." },
-  { speaker: "agent", text: "As required, I need to read our short disclosure: This call may be recorded for quality and compliance." },
-  { speaker: "customer", text: "That's fine." },
-  { speaker: "agent", text: "Great. We have an offer that could save you about 20% on your next renewal." },
+  
 ];
 
 export function RepPortal() {

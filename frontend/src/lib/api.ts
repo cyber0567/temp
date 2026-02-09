@@ -171,6 +171,14 @@ export const api = {
     return request<{ connected: boolean }>("/auth/ringcentral/status", { auth: true });
   },
 
+  /** Disconnect RingCentral (remove stored tokens). Requires auth. */
+  async disconnectRingCentral(): Promise<{ ok: boolean }> {
+    return request<{ ok: boolean }>("/auth/ringcentral", {
+      method: "DELETE",
+      auth: true,
+    });
+  },
+
   /** Set user platform role (super_admin only). */
   async setUserPlatformRole(userId: string, platformRole: PlatformRole): Promise<{ ok: boolean }> {
     return request<{ ok: boolean }>(`/admin/users/${userId}/platform-role`, {

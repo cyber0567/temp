@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { Router, Request, Response, NextFunction } from 'express';
 import passport from 'passport';
 import jwt from 'jsonwebtoken';
@@ -189,7 +190,7 @@ router.get(
   }
 );
 
-/** POST /auth/ringcentral - get RingCentral OAuth URL (requires JWT). Frontend redirects user to returned authUrl. */
+/** POST /auth/ringcentral - get RingCentral OAuth authorization URL (Authorization Code flow). State is signed for CSRF protection. */
 router.post('/ringcentral', requireAuth, (req: Request, res: Response): void => {
   if (!isRingCentralConfigured()) {
     const missing = getRingCentralMissingEnv();
@@ -207,27 +208,46 @@ router.post('/ringcentral', requireAuth, (req: Request, res: Response): void => 
     return;
   }
   try {
+    const state = jwt.sign(
+      { userId, nonce: crypto.randomBytes(16).toString('hex') },
+      env.sessionSecret,
+      { expiresIn: '10m' }
+    );
     const sdk = getRingCentralSDK();
     const platform = sdk.platform();
-    const authUrl = platform.loginUrl({ state: userId });
+    const authUrl = platform.loginUrl({ state, redirectUri: env.ringcentralCallbackUrl });
     res.json({ authUrl });
   } catch (e) {
     res.status(500).json({ error: 'Failed to initiate RingCentral OAuth' });
   }
 });
 
-/** GET /auth/ringcentral/callback - RingCentral OAuth callback */
+/** GET /auth/ringcentral/callback - RingCentral OAuth callback. Validates state (CSRF), exchanges code for tokens, stores securely. */
 router.get('/ringcentral/callback', async (req: Request, res: Response): Promise<void> => {
   const { code, state } = req.query as { code?: string; state?: string };
   if (!code || !state) {
     res.redirect(`${env.frontendUrl}/dashboard?error=ringcentral_missing_code`);
     return;
   }
-  const userId = state;
+  let userId: string;
+  try {
+    const decoded = jwt.verify(state, env.sessionSecret) as { userId?: string };
+    if (!decoded?.userId) {
+      res.redirect(`${env.frontendUrl}/dashboard?error=ringcentral_invalid_state`);
+      return;
+    }
+    userId = decoded.userId;
+  } catch {
+    res.redirect(`${env.frontendUrl}/dashboard?error=ringcentral_invalid_state`);
+    return;
+  }
   try {
     const sdk = getRingCentralSDK();
     const platform = sdk.platform();
-    await platform.login({ code });
+    await platform.login({
+      code,
+      redirect_uri: env.ringcentralCallbackUrl,
+    });
     const token = await platform.auth().data();
     const accessToken = (token as { access_token?: string }).access_token;
     const refreshToken = (token as { refresh_token?: string }).refresh_token;
@@ -268,6 +288,18 @@ router.get('/ringcentral/status', requireAuth, async (req: Request, res: Respons
   }
   const { data } = await supabase.from('ringcentral_tokens').select('id').eq('user_id', userId).single();
   res.json({ connected: !!data });
+});
+
+/** DELETE /auth/ringcentral - disconnect RingCentral (remove stored tokens). Requires auth. */
+router.delete('/ringcentral', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const authReq = req as AuthenticatedRequest;
+  const userId = authReq.user?.sub;
+  if (!userId) {
+    res.status(401).json({ error: 'Authentication required' });
+    return;
+  }
+  await supabase.from('ringcentral_tokens').delete().eq('user_id', userId);
+  res.json({ ok: true, message: 'RingCentral disconnected' });
 });
 
 export default router;
