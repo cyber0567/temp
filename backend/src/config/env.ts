@@ -42,5 +42,5 @@ export const env = {
   ringcentralClientId: raw.ringcentralClientId,
   ringcentralClientSecret: raw.ringcentralClientSecret,
   ringcentralServer: raw.ringcentralServer,
-  ringcentralCallbackUrl: raw.ringcentralCallbackUrl,
+  ringcentralCallbackUrl: (raw.ringcentralCallbackUrl || '').trim().replace(/\/+$/, '') || '',
 };

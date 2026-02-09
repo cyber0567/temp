@@ -248,6 +248,16 @@ router.get('/ringcentral/callback', async (req: Request, res: Response): Promise
   }
 });
 
+/** GET /auth/ringcentral/redirect-uri - returns the exact redirect URI to add in RingCentral app (fixes OAU-109) */
+router.get('/ringcentral/redirect-uri', (_req: Request, res: Response): void => {
+  const redirectUri = env.ringcentralCallbackUrl || 'http://localhost:3001/auth/ringcentral/callback';
+  res.json({
+    redirect_uri: redirectUri,
+    message:
+      'Add this EXACT value in RingCentral Developer Portal → your app → Auth → Redirect URI. No trailing slash.',
+  });
+});
+
 /** GET /auth/ringcentral/status - check if user has RingCentral linked (requires auth) */
 router.get('/ringcentral/status', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const authReq = req as AuthenticatedRequest;
