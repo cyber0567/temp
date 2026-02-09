@@ -28,6 +28,18 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.__alertQueue = window.__alertQueue || [];
+              var _nativeAlert = window.alert;
+              window.alert = function(msg) {
+                if (typeof msg === 'string') window.__alertQueue.push(msg);
+                else if (_nativeAlert) _nativeAlert.call(window, msg);
+              };
+            `,
+          }}
+        />
         <Providers>{children}</Providers>
       </body>
     </html>

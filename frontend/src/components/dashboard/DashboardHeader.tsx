@@ -23,7 +23,14 @@ export function DashboardHeader() {
       window.location.href = authUrl;
     } catch (e: unknown) {
       const err = e as { message?: string };
-      toast.error(err?.message ?? "Failed to connect RingCentral");
+      const msg = err?.message ?? "";
+      if (msg.includes("Missing") && msg.includes("backend")) {
+        toast.error(msg);
+      } else if (msg.includes("not configured") || msg.includes("503")) {
+        toast.error("RingCentral isn’t configured. Add RINGCENTRAL_CLIENT_ID, RINGCENTRAL_CLIENT_SECRET, and RINGCENTRAL_CALLBACK_URL to the backend .env and restart the backend.");
+      } else {
+        toast.error(msg || "Failed to connect RingCentral");
+      }
     }
   }
 

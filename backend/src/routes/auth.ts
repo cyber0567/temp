@@ -7,7 +7,7 @@ import { env } from '../config/env';
 import type { SignUpBody, LoginBody, ForgotPasswordBody } from '../types';
 import type { PassportUser } from '../config/passport';
 import { googleCallbackUrl } from '../config/passport';
-import { getRingCentralSDK, isRingCentralConfigured } from '../config/ringcentral';
+import { getRingCentralSDK, isRingCentralConfigured, getRingCentralMissingEnv } from '../config/ringcentral';
 import { requireAuth, AuthenticatedRequest } from '../middleware/auth';
 
 const router = Router();
@@ -192,7 +192,12 @@ router.get(
 /** POST /auth/ringcentral - get RingCentral OAuth URL (requires JWT). Frontend redirects user to returned authUrl. */
 router.post('/ringcentral', requireAuth, (req: Request, res: Response): void => {
   if (!isRingCentralConfigured()) {
-    res.status(503).json({ error: 'RingCentral OAuth is not configured' });
+    const missing = getRingCentralMissingEnv();
+    const message =
+      missing.length > 0
+        ? `RingCentral not configured. Missing in backend/.env: ${missing.join(', ')}. Restart the backend after adding them.`
+        : 'RingCentral OAuth is not configured. Set RINGCENTRAL_CLIENT_ID, RINGCENTRAL_CLIENT_SECRET, RINGCENTRAL_CALLBACK_URL in backend/.env and restart.';
+    res.status(503).json({ error: message, missing });
     return;
   }
   const authReq = req as AuthenticatedRequest;

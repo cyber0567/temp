@@ -18,3 +18,12 @@ export function getRingCentralSDK() {
 export function isRingCentralConfigured(): boolean {
   return !!(env.ringcentralClientId && env.ringcentralClientSecret && env.ringcentralCallbackUrl);
 }
+
+/** Returns env var names that are missing or empty (for 503 debugging). */
+export function getRingCentralMissingEnv(): string[] {
+  const missing: string[] = [];
+  if (!env.ringcentralClientId?.trim()) missing.push('RINGCENTRAL_CLIENT_ID');
+  if (!env.ringcentralClientSecret?.trim()) missing.push('RINGCENTRAL_CLIENT_SECRET');
+  if (!env.ringcentralCallbackUrl?.trim()) missing.push('RINGCENTRAL_CALLBACK_URL');
+  return missing;
+}
