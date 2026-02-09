@@ -30,22 +30,31 @@ export default function ConfirmEmailPage() {
         setTimeout(() => router.replace("/login?verified=1"), 2000);
       });
     };
-    const { data: { session } } = supabase.auth.getSession();
-    if (session) {
-      goVerified();
-      return;
-    }
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
-        if (session) goVerified();
+    let subscription: { unsubscribe: () => void } | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled) return;
+      if (session) {
+        goVerified();
+        return;
       }
+      const { data: { subscription: sub } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+          if (session) goVerified();
+        }
+      });
+      subscription = sub;
+      timeoutId = setTimeout(() => {
+        if (!cancelled && !doneRef.current) setStatus("error");
+      }, 8000);
     });
-    const timeout = setTimeout(() => {
-      if (!doneRef.current) setStatus("error");
-    }, 8000);
+
     return () => {
-      subscription.unsubscribe();
-      clearTimeout(timeout);
+      cancelled = true;
+      subscription?.unsubscribe();
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, [router]);
 
