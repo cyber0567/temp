@@ -10,6 +10,7 @@ export type ApiError = { message: string; code?: string; errors?: Record<string,
 export type LoginResponse = { user: { id: string; email: string; name?: string }; token: string };
 export type SignupResponse = { user: { id: string; email: string; name?: string }; token: string };
 export type ForgotPasswordResponse = { message: string };
+export type VerifyEmailResponse = { user: { id: string; email: string }; token: string };
 export type OAuthAuthResponse = { url: string };
 
 export type OrgRole = "admin" | "member" | "viewer";
@@ -77,6 +78,22 @@ export const api = {
 
   async forgotPassword(email: string): Promise<ForgotPasswordResponse> {
     return request<ForgotPasswordResponse>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email: email.trim() }),
+    });
+  },
+
+  /** Verify email with 6-digit code. Returns token and user on success. */
+  async verifyEmail(email: string, code: string): Promise<VerifyEmailResponse> {
+    return request<VerifyEmailResponse>("/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify({ email: email.trim(), code }),
+    });
+  },
+
+  /** Resend 6-digit verification code to email. */
+  async resendVerification(email: string): Promise<{ message: string }> {
+    return request<{ message: string }>("/auth/resend-verification", {
       method: "POST",
       body: JSON.stringify({ email: email.trim() }),
     });

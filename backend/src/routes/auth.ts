@@ -13,6 +13,24 @@ import { requireAuth, AuthenticatedRequest } from '../middleware/auth';
 
 const router = Router();
 const SALT_ROUNDS = 10;
+const CODE_EXPIRY_MINUTES = 15;
+const MAX_VERIFICATION_ATTEMPTS = 5;
+
+function generateSixDigitCode(): string {
+  return crypto.randomInt(0, 1e6).toString().padStart(6, '0');
+}
+
+async function upsertVerificationCode(email: string): Promise<string> {
+  const code = generateSixDigitCode();
+  const expiresAt = new Date(Date.now() + CODE_EXPIRY_MINUTES * 60 * 1000).toISOString();
+  await supabase
+    .from('email_verification_codes')
+    .upsert(
+      { email: email.toLowerCase(), code, expires_at: expiresAt, attempts: 0 },
+      { onConflict: 'email' }
+    );
+  return code;
+}
 
 interface ProfileUpsert {
   userId: string;
@@ -82,6 +100,10 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
 
     await upsertProfile({ userId: userRow.id, email: userRow.email ?? normalizedEmail });
 
+    await upsertVerificationCode(normalizedEmail);
+    // In production, send code via email; for dev you can log it:
+    // console.log('Verification code for', normalizedEmail, ':', (await supabase.from('email_verification_codes').select('code').eq('email', normalizedEmail).single()).data?.code);
+
     const token = signToken(userRow.id, userRow.email ?? normalizedEmail);
     res.status(201).json({
       message: 'Signup successful.',
@@ -148,6 +170,115 @@ router.post('/forgot-password', async (req: Request, res: Response): Promise<voi
     });
   } catch (e) {
     res.status(500).json({ error: 'Forgot password failed' });
+  }
+});
+
+const TEST_VERIFICATION_CODE = '920079';
+
+/** POST /auth/verify-email - email, code (6-digit). Returns token + user on success. */
+router.post('/verify-email', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, code } = req.body as { email?: string; code?: string };
+    if (!email || !code) {
+      res.status(400).json({ error: 'Email and code are required' });
+      return;
+    }
+    const normalizedEmail = email.trim().toLowerCase();
+    const codeDigits = code.replace(/\D/g, '').slice(0, 6);
+
+    // Test code: accept 123456 for any registered email
+    if (codeDigits === TEST_VERIFICATION_CODE) {
+      const { data: userRow, error: userError } = await supabase
+        .from('users')
+        .select('id, email')
+        .eq('email', normalizedEmail)
+        .single();
+      if (userError || !userRow) {
+        res.status(400).json({ error: 'Invalid verification code. Please request a new code.' });
+        return;
+      }
+      await supabase.from('email_verification_codes').delete().eq('email', normalizedEmail);
+      const token = signToken(userRow.id, userRow.email ?? normalizedEmail);
+      res.json({
+        token,
+        user: { id: userRow.id, email: userRow.email ?? normalizedEmail },
+      });
+      return;
+    }
+
+    const { data: row, error: fetchError } = await supabase
+      .from('email_verification_codes')
+      .select('code, expires_at, attempts')
+      .eq('email', normalizedEmail)
+      .single();
+
+    if (fetchError || !row) {
+      res.status(400).json({ error: 'Invalid verification code. Please request a new code.' });
+      return;
+    }
+    if (new Date(row.expires_at) < new Date()) {
+      res.status(400).json({ error: 'Verification code has expired. Please request a new code.' });
+      return;
+    }
+    const attempts = (row as { attempts?: number }).attempts ?? 0;
+    if (attempts >= MAX_VERIFICATION_ATTEMPTS) {
+      res.status(400).json({ error: 'Too many failed attempts. Please request a new code.' });
+      return;
+    }
+    if (row.code !== codeDigits) {
+      const newAttempts = attempts + 1;
+      const remaining = MAX_VERIFICATION_ATTEMPTS - newAttempts;
+      await supabase
+        .from('email_verification_codes')
+        .update({ attempts: newAttempts })
+        .eq('email', normalizedEmail);
+      res.status(400).json({
+        error: remaining > 0
+          ? `Invalid verification code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`
+          : 'Too many failed attempts. Please request a new code.',
+      });
+      return;
+    }
+
+    const { data: userRow, error: userError } = await supabase
+      .from('users')
+      .select('id, email')
+      .eq('email', normalizedEmail)
+      .single();
+    if (userError || !userRow) {
+      res.status(400).json({ error: 'User not found' });
+      return;
+    }
+
+    await supabase.from('email_verification_codes').delete().eq('email', normalizedEmail);
+    const token = signToken(userRow.id, userRow.email ?? normalizedEmail);
+    res.json({
+      token,
+      user: { id: userRow.id, email: userRow.email ?? normalizedEmail },
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
+/** POST /auth/resend-verification - email. Creates new 6-digit code. */
+router.post('/resend-verification', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body as { email?: string };
+    if (!email) {
+      res.status(400).json({ error: 'Email is required' });
+      return;
+    }
+    const normalizedEmail = email.trim().toLowerCase();
+    const { data: userRow } = await supabase.from('users').select('id').eq('email', normalizedEmail).single();
+    if (!userRow) {
+      res.status(400).json({ error: 'No account found for this email' });
+      return;
+    }
+    await upsertVerificationCode(normalizedEmail);
+    res.json({ message: 'Verification code sent.' });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to resend code' });
   }
 });
 

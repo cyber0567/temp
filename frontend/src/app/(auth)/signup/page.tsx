@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { toast } from "sonner";
 import { Mail, Lock } from "lucide-react";
 import { AuthCard } from "@/components/ui/AuthCard";
 import { Button } from "@/components/ui/Button";
@@ -26,6 +25,7 @@ export default function SignupPage() {
     password?: string;
     confirmPassword?: string;
   }>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -38,22 +38,18 @@ export default function SignupPage() {
     if (passwordError) newErrors.password = passwordError;
     if (confirmError) newErrors.confirmPassword = confirmError;
     setErrors(newErrors);
+    setFormError(confirmError ? "Passwords do not match" : null);
     if (emailError || passwordError || confirmError) return;
 
     setLoading(true);
+    setFormError(null);
     try {
-      const res = await api.signup(email, password, confirmPassword);
-      if (res.token) {
-        if (typeof window !== "undefined") {
-          localStorage.setItem("token", res.token);
-          localStorage.setItem("user", JSON.stringify(res.user));
-        }
-        router.push("/dashboard");
-        return;
-      }
+      await api.signup(email, password, confirmPassword);
+      router.push(`/verify-email?email=${encodeURIComponent(email.trim())}`);
+      return;
     } catch (err) {
       const apiErr = err as ApiError;
-      toast.error(apiErr.message ?? "Sign up failed");
+      setFormError(apiErr.message ?? "Sign up failed");
       if (apiErr.errors) {
         setErrors((prev) => ({ ...prev, ...apiErr.errors }));
       }
@@ -86,6 +82,7 @@ export default function SignupPage() {
             onChange={(e) => {
               setEmail(e.target.value);
               if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+              if (formError) setFormError(null);
             }}
             leftIcon={<Mail className="h-5 w-5" />}
             error={errors.email}
@@ -101,6 +98,7 @@ export default function SignupPage() {
               if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
               if (errors.confirmPassword)
                 setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+              if (formError) setFormError(null);
             }}
             leftIcon={<Lock className="h-5 w-5" />}
             error={errors.password}
@@ -115,11 +113,21 @@ export default function SignupPage() {
               setConfirmPassword(e.target.value);
               if (errors.confirmPassword)
                 setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+              if (formError) setFormError(null);
             }}
             leftIcon={<Lock className="h-5 w-5" />}
             error={errors.confirmPassword}
             autoComplete="new-password"
           />
+          {formError && (
+            <div
+              className="w-full rounded-lg border border-red-200 py-3 px-3 text-center text-sm font-medium text-red-600"
+              style={{ backgroundColor: "#FEE8E7" }}
+              role="alert"
+            >
+              {formError}
+            </div>
+          )}
           <Button type="submit" variant="primary" size="lg" fullWidth disabled={loading}>
             {loading ? "Creating account…" : "Create account"}
           </Button>

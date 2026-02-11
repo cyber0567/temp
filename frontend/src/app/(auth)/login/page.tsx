@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { toast } from "sonner";
 import { Mail, Lock } from "lucide-react";
 import { AuthCard } from "@/components/ui/AuthCard";
 import { Button } from "@/components/ui/Button";
@@ -18,6 +17,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -28,9 +28,11 @@ export default function LoginPage() {
     if (emailError) newErrors.email = emailError;
     if (passwordError) newErrors.password = passwordError;
     setErrors(newErrors);
+    setFormError(null);
     if (emailError || passwordError) return;
 
     setLoading(true);
+    setFormError(null);
     try {
       const res = await api.login(email, password);
       const token = (res as { token?: string; access_token?: string }).token ?? (res as { access_token?: string }).access_token;
@@ -44,7 +46,7 @@ export default function LoginPage() {
       }
     } catch (err) {
       const apiErr = err as ApiError;
-      toast.error(apiErr.message ?? "Sign in failed");
+      setFormError("Invalid email or password");
       if (apiErr.errors) {
         setErrors((prev) => ({ ...prev, ...apiErr.errors }));
       }
@@ -115,6 +117,7 @@ export default function LoginPage() {
             onChange={(e) => {
               setEmail(e.target.value);
               if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+              if (formError) setFormError(null);
             }}
             leftIcon={<Mail className="h-5 w-5 text-gray-400" />}
             error={errors.email}
@@ -128,11 +131,21 @@ export default function LoginPage() {
             onChange={(e) => {
               setPassword(e.target.value);
               if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+              if (formError) setFormError(null);
             }}
             leftIcon={<Lock className="h-5 w-5 text-gray-400" />}
             error={errors.password}
             autoComplete="current-password"
           />
+          {formError && (
+            <div
+              className="w-full rounded-lg py-3 text-center text-sm font-medium text-red-600"
+              style={{ backgroundColor: "#FEE8E7" }}
+              role="alert"
+            >
+              Invalid email or password
+            </div>
+          )}
           <Button
             type="submit"
             variant="primary"
