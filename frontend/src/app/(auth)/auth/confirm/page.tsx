@@ -1,61 +1,41 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { AuthCard } from "@/components/ui/AuthCard";
 import { LogoBadge } from "@/components/auth/LogoBadge";
-import { getSupabase } from "@/lib/supabase";
+import { api } from "@/lib/api";
 
 export default function ConfirmEmailPage() {
   const router = useRouter();
   const [status, setStatus] = useState<"loading" | "verified" | "error">("loading");
-  const doneRef = useRef(false);
 
   useEffect(() => {
-    const supabase = getSupabase();
-    if (!supabase) {
+    if (typeof window === "undefined") return;
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const accessToken = hashParams.get("access_token");
+    const type = hashParams.get("type");
+    const isValidMagicLink = accessToken && (type === "magiclink" || type === "email");
+
+    if (isValidMagicLink) {
+      api
+        .exchangeSupabaseSession(accessToken)
+        .then((res) => {
+          const t = (res as { token?: string }).token ?? (res as { access_token?: string }).access_token;
+          if (t && res.user && typeof window !== "undefined") {
+            localStorage.setItem("token", t);
+            localStorage.setItem("user", JSON.stringify(res.user));
+          }
+          setStatus("verified");
+          window.history.replaceState(null, "", window.location.pathname);
+          setTimeout(() => router.replace("/dashboard"), 2000);
+        })
+        .catch(() => setStatus("error"));
+    } else {
       setStatus("error");
-      return;
     }
-    const goVerified = () => {
-      if (doneRef.current) return;
-      doneRef.current = true;
-      setStatus("verified");
-      if (typeof window !== "undefined") {
-        window.history.replaceState(null, "", window.location.pathname);
-      }
-      supabase.auth.signOut().finally(() => {
-        setTimeout(() => router.replace("/login?verified=1"), 2000);
-      });
-    };
-    let subscription: { unsubscribe: () => void } | null = null;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    let cancelled = false;
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (cancelled) return;
-      if (session) {
-        goVerified();
-        return;
-      }
-      const { data: { subscription: sub } } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
-          if (session) goVerified();
-        }
-      });
-      subscription = sub;
-      timeoutId = setTimeout(() => {
-        if (!cancelled && !doneRef.current) setStatus("error");
-      }, 8000);
-    });
-
-    return () => {
-      cancelled = true;
-      subscription?.unsubscribe();
-      if (timeoutId) clearTimeout(timeoutId);
-    };
   }, [router]);
 
   if (status === "verified") {
@@ -67,7 +47,7 @@ export default function ConfirmEmailPage() {
             <CheckCircle2 className="h-16 w-16 text-emerald-500" />
           </div>
           <h1 className="text-2xl font-bold text-black">Email verified</h1>
-          <p className="text-gray-600">Redirecting you to sign in…</p>
+          <p className="text-gray-600">Redirecting you to the dashboard…</p>
           <div className="flex justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
           </div>
