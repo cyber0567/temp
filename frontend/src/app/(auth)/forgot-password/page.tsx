@@ -7,7 +7,7 @@ import { Mail } from "lucide-react";
 import { AuthCard } from "@/components/ui/AuthCard";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { LogoBadge } from "@/components/auth/LogoBadge";
+import { SwpLogo } from "@/components/auth/SwpLogo";
 import { validateEmail } from "@/lib/validation";
 import { api, type ApiError } from "@/lib/api";
 
@@ -43,7 +43,7 @@ export default function ForgotPasswordPage() {
     return (
       <AuthCard>
         <div className="flex flex-col gap-6">
-          <LogoBadge title="MVP" />
+          <SwpLogo />
           <div className="text-center">
             <h1 className="text-3xl font-bold text-black">
               Check your email
@@ -73,7 +73,7 @@ export default function ForgotPasswordPage() {
           ← Back to sign in
         </Link>
 
-        <LogoBadge title="MVP" />
+        <SwpLogo />
         <div className="text-center">
           <h1 className="text-3xl font-bold text-black">
             Reset your password

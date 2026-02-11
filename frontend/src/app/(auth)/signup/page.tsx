@@ -8,7 +8,7 @@ import { Mail, Lock } from "lucide-react";
 import { AuthCard } from "@/components/ui/AuthCard";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { LogoBadge } from "@/components/auth/LogoBadge";
+import { SwpLogo } from "@/components/auth/SwpLogo";
 import {
   validateEmail,
   validatePassword,
@@ -72,7 +72,7 @@ export default function SignupPage() {
           ← Back to sign in
         </Link>
 
-        <LogoBadge title="MVP" />
+        <SwpLogo />
         <h1 className="text-3xl font-bold text-black text-center">
           Create your account
         </h1>
