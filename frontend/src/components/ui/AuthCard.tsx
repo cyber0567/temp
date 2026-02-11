@@ -1,9 +1,22 @@
 import { type ReactNode } from "react";
+import { Card } from "@/components/ui/shadcn/card";
+import { cn } from "@/lib/utils";
 
-export function AuthCard({ children }: { children: ReactNode }) {
+export function AuthCard({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="w-full max-w-md rounded-2xl border border-gray-200/80 bg-white p-8 shadow-lg">
+    <Card
+      className={cn(
+        "w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 shadow-lg dark:border-gray-200 dark:bg-white",
+        className
+      )}
+    >
       {children}
-    </div>
+    </Card>
   );
 }

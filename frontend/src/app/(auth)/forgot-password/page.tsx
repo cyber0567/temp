@@ -57,28 +57,27 @@ export default function ForgotPasswordPage() {
     return (
       <AuthCard>
         <div className="flex flex-col gap-6 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gray-200">
-            <Mail className="h-7 w-7 text-gray-600" strokeWidth={1.5} />
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-gray-200 bg-gray-100">
+            <Mail className="h-7 w-7 text-gray-800" strokeWidth={1.5} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-[#1a1d29]">
+            <h1 className="text-2xl font-bold text-gray-900">
               Check your email
             </h1>
-            <p className="mt-2 text-gray-600">
+            <p className="mt-2 text-base text-gray-600">
               We&apos;ve sent password reset instructions to
             </p>
-            <p className="mt-0.5 font-semibold text-gray-900">{email}</p>
+            <p className="mt-0.5 text-lg font-semibold text-gray-900">{email}</p>
           </div>
           <div
-            className="rounded-lg border border-green-200 py-3 px-3 text-sm font-medium text-green-700"
-            style={{ backgroundColor: "#ECFDF5" }}
+            className="rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-center text-sm text-green-700"
             role="status"
           >
             Please check your email for the password reset link. It may take a few minutes to arrive.
           </div>
           <Link
             href="/login"
-            className="inline-flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900"
+            className="inline-flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900 w-fit"
           >
             ← Back to sign in
           </Link>
@@ -92,7 +91,7 @@ export default function ForgotPasswordPage() {
       <div className="flex flex-col gap-6">
         <Link
           href="/login"
-          className="inline-flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900 w-fit"
+          className="inline-flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900 w-fit"
         >
           ← Back to sign in
         </Link>
