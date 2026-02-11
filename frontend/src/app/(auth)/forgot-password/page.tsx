@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { toast } from "sonner";
 import { Mail } from "lucide-react";
 import { AuthCard } from "@/components/ui/AuthCard";
 import { Button } from "@/components/ui/Button";
@@ -10,10 +9,12 @@ import { Input } from "@/components/ui/Input";
 import { SwpLogo } from "@/components/auth/SwpLogo";
 import { validateEmail } from "@/lib/validation";
 import { api, type ApiError } from "@/lib/api";
+import { getSupabase } from "@/lib/supabase";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [errors, setErrors] = useState<{ email?: string }>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -21,15 +22,29 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     const emailError = validateEmail(email);
     setErrors(emailError ? { email: emailError } : {});
+    setFormError(null);
     if (emailError) return;
 
     setLoading(true);
+    setFormError(null);
     try {
-      await api.forgotPassword(email);
+      const supabase = getSupabase();
+      if (supabase) {
+        const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/reset-password` : "";
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+          redirectTo,
+        });
+        if (error) {
+          setFormError(error.message ?? "Failed to send reset link");
+          return;
+        }
+      } else {
+        await api.forgotPassword(email);
+      }
       setSuccess(true);
     } catch (err) {
       const apiErr = err as ApiError;
-      toast.error(apiErr.message ?? "Failed to send reset link");
+      setFormError(apiErr.message ?? "Failed to send reset link");
       if (apiErr.errors) {
         setErrors((prev) => ({ ...prev, ...apiErr.errors }));
       }
@@ -102,11 +117,21 @@ export default function ForgotPasswordPage() {
             onChange={(e) => {
               setEmail(e.target.value);
               if (errors.email) setErrors({});
+              if (formError) setFormError(null);
             }}
             leftIcon={<Mail className="h-5 w-5" />}
             error={errors.email}
             autoComplete="email"
           />
+          {formError && (
+            <div
+              className="w-full rounded-lg py-3 text-center text-sm font-medium text-red-600"
+              style={{ backgroundColor: "#FEE8E7" }}
+              role="alert"
+            >
+              {formError}
+            </div>
+          )}
           <Button type="submit" variant="primary" size="lg" fullWidth disabled={loading}>
             {loading ? "Sending…" : "Send reset link"}
           </Button>

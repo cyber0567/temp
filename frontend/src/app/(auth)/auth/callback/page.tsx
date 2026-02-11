@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
 
 function AuthCallbackContent() {
   const router = useRouter();
@@ -13,24 +14,54 @@ function AuthCallbackContent() {
     const token = searchParams.get("token");
     const userParam = searchParams.get("user");
 
-    if (!token) {
-      setStatus("error");
-      toast.error("Missing token");
+    // Google (or other) callback with ?token= & user=
+    if (token) {
+      try {
+        const user = userParam ? (JSON.parse(decodeURIComponent(userParam)) as { id: string; email?: string }) : { id: "", email: "" };
+        if (typeof window !== "undefined") {
+          localStorage.setItem("token", token);
+          localStorage.setItem("user", JSON.stringify(user));
+        }
+        setStatus("success");
+        router.replace("/dashboard");
+      } catch {
+        setStatus("error");
+        toast.error("Invalid callback data");
+      }
       return;
     }
 
-    try {
-      const user = userParam ? (JSON.parse(decodeURIComponent(userParam)) as { id: string; email?: string }) : { id: "", email: "" };
-      if (typeof window !== "undefined") {
-        localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(user));
+    // Supabase: magic link (signup via signInWithOtp) or password recovery
+    if (typeof window !== "undefined" && window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.slice(1));
+      const accessToken = hashParams.get("access_token");
+      const type = hashParams.get("type");
+      if (type === "recovery") {
+        router.replace("/auth/reset-password" + window.location.hash);
+        return;
       }
-      setStatus("success");
-      router.replace("/dashboard");
-    } catch {
-      setStatus("error");
-      toast.error("Invalid callback data");
+      if (accessToken && (type === "magiclink" || type === "email")) {
+        api
+          .exchangeSupabaseSession(accessToken)
+          .then((res) => {
+            const t = (res as { token?: string }).token ?? (res as { access_token?: string }).access_token;
+            if (t && res.user && typeof window !== "undefined") {
+              localStorage.setItem("token", t);
+              localStorage.setItem("user", JSON.stringify(res.user));
+            }
+            setStatus("success");
+            router.replace("/dashboard");
+          })
+          .catch(() => {
+            setStatus("error");
+            toast.error("Sign-up link invalid or expired");
+          });
+        return;
+      }
     }
+
+    setStatus("error");
+    toast.error("Missing token");
   }, [searchParams, router]);
 
   if (status === "loading") {

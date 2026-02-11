@@ -45,7 +45,7 @@ export default function SignupPage() {
     setFormError(null);
     try {
       await api.signup(email, password, confirmPassword);
-      router.push(`/verify-email?email=${encodeURIComponent(email.trim())}`);
+      router.push(`/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}`);
       return;
     } catch (err) {
       const apiErr = err as ApiError;

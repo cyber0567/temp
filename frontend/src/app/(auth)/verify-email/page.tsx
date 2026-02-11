@@ -17,7 +17,7 @@ export default function VerifyEmailPage() {
   const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(""));
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendLoading, setResendLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const codeString = code.join("");
@@ -81,21 +81,17 @@ export default function VerifyEmailPage() {
   }
 
   async function handleResend() {
-    if (resendCooldown > 0) return;
+    if (resendLoading) return;
     setError(null);
+    setResendLoading(true);
     try {
       await api.resendVerification(email);
       setCode(Array(CODE_LENGTH).fill(""));
-      setResendCooldown(60);
-      const id = setInterval(() => {
-        setResendCooldown((prev) => {
-          if (prev <= 1) clearInterval(id);
-          return prev - 1;
-        });
-      }, 1000);
     } catch (err) {
       const apiErr = err as ApiError;
       setError(apiErr.message ?? "Failed to resend code");
+    } finally {
+      setResendLoading(false);
     }
   }
 
@@ -172,10 +168,10 @@ export default function VerifyEmailPage() {
           <button
             type="button"
             onClick={handleResend}
-            disabled={resendCooldown > 0}
+            disabled={resendLoading}
             className="font-medium text-gray-900 underline underline-offset-2 hover:text-gray-700 disabled:no-underline disabled:opacity-60"
           >
-            {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend"}
+            {resendLoading ? "Sending…" : "Resend"}
           </button>
         </p>
       </div>
