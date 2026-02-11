@@ -1,24 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Lock, Check } from "lucide-react";
+import { Lock, Check, Loader2 } from "lucide-react";
 import { AuthCard } from "@/components/ui/AuthCard";
+import { useUser } from "@/contexts/UserContext";
 
 export default function AccessRequestedPage() {
   const router = useRouter();
-  const [email, setEmail] = useState<string | null>(null);
+  const { user, loading } = useUser();
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = localStorage.getItem("user");
-      const user = raw ? (JSON.parse(raw) as { email?: string }) : null;
-      setEmail(user?.email ?? null);
-    } catch {
-      setEmail(null);
-    }
-  }, []);
+    if (loading) return;
+    if (!user) router.replace("/login");
+  }, [user, loading, router]);
+
+  if (loading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F8F9FB]">
+        <div className="flex flex-col items-center gap-3 text-zinc-500">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="text-sm">Loading…</span>
+        </div>
+      </div>
+    );
+  }
 
   function handleSwitchAccount() {
     if (typeof window !== "undefined") {
@@ -63,9 +69,9 @@ export default function AccessRequestedPage() {
           </div>
         </div>
 
-        {email && (
+        {user?.email && (
           <p className="text-sm text-gray-600">
-            You&apos;re logged in as {email}
+            You&apos;re logged in as {user.email}
           </p>
         )}
         <button

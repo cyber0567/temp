@@ -32,9 +32,9 @@ export default function ConfirmEmailPage() {
           window.history.replaceState(null, "", window.location.pathname);
           setTimeout(() => router.replace("/dashboard"), 2000);
         })
-        .catch(() => setStatus("error"));
+        .catch(() => queueMicrotask(() => setStatus("error")));
     } else {
-      setStatus("error");
+      queueMicrotask(() => setStatus("error"));
     }
   }, [router]);
 

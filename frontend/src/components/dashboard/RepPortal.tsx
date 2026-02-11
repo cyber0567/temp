@@ -47,7 +47,7 @@ export function RepPortal() {
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setToken(typeof window !== "undefined" ? localStorage.getItem("token") : null);
+    queueMicrotask(() => setToken(typeof window !== "undefined" ? localStorage.getItem("token") : null));
   }, []);
 
   const handleMessage = useCallback((data: unknown) => {
@@ -206,7 +206,7 @@ export function RepPortal() {
                 <div className="max-h-[420px] overflow-y-auto p-4">
                   {transcript.length === 0 ? (
                     <p className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                      Transcript will appear here when you're on a call or run a simulation.
+                      Transcript will appear here when you&apos;re on a call or run a simulation.
                     </p>
                   ) : (
                     <ul className="space-y-3">

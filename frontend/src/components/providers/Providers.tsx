@@ -2,6 +2,7 @@
 
 import { type ReactNode, useEffect, useState } from "react";
 import { Toaster, toast } from "sonner";
+import { UserProvider } from "@/contexts/UserContext";
 import { WebSocketProvider } from "@/contexts/WebSocketContext";
 
 function isMac(): boolean {
@@ -15,8 +16,10 @@ export function Providers({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    setCloseButtonPosition(
-      isMac() ? "!absolute !left-2 !top-2 !right-auto" : "!absolute !right-2 !top-2 !left-auto"
+    queueMicrotask(() =>
+      setCloseButtonPosition(
+        isMac() ? "!absolute !left-2 !top-2 !right-auto" : "!absolute !right-2 !top-2 !left-auto"
+      )
     );
   }, []);
 
@@ -35,7 +38,8 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <WebSocketProvider>{children}</WebSocketProvider>
+      <UserProvider>
+        <WebSocketProvider>{children}</WebSocketProvider>
       <Toaster
         richColors
         position="top-center"
@@ -44,6 +48,7 @@ export function Providers({ children }: { children: ReactNode }) {
           classNames: { closeButton: closeButtonPosition },
         }}
       />
+      </UserProvider>
     </>
   );
 }

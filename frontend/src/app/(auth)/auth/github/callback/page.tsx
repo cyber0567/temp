@@ -14,9 +14,11 @@ function GithubCallbackContent() {
   useEffect(() => {
     const code = searchParams.get("code");
     if (!code) {
-      setStatus("error");
       const msg = "Missing authorization code";
-      setError(msg);
+      queueMicrotask(() => {
+        setStatus("error");
+        setError(msg);
+      });
       toast.error(msg);
       return;
     }

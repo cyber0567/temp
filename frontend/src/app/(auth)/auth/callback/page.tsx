@@ -22,10 +22,10 @@ function AuthCallbackContent() {
           localStorage.setItem("token", token);
           localStorage.setItem("user", JSON.stringify(user));
         }
-        setStatus("success");
+        queueMicrotask(() => setStatus("success"));
         router.replace("/dashboard");
       } catch {
-        setStatus("error");
+        queueMicrotask(() => setStatus("error"));
         toast.error("Invalid callback data");
       }
       return;
@@ -60,7 +60,7 @@ function AuthCallbackContent() {
       }
     }
 
-    setStatus("error");
+    queueMicrotask(() => setStatus("error"));
     toast.error("Missing token");
   }, [searchParams, router]);
 
