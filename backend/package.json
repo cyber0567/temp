@@ -24,6 +24,7 @@
     "@nestjs/websockets": "^10.4.15",
     "@prisma/client": "^6.9.0",
     "@ringcentral/sdk": "^5.0.6",
+    "@nestjs/cli": "^10.4.9",
     "@supabase/supabase-js": "^2.45.0",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
@@ -36,7 +37,6 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "@nestjs/cli": "^10.4.9",
     "@types/bcrypt": "^6.0.0",
     "@types/express": "^4.17.21",
     "@types/node": "^22.9.0",
