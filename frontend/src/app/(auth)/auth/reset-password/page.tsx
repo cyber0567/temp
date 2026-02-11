@@ -102,12 +102,13 @@ export default function ResetPasswordPage() {
         toast.error("Supabase is not configured.");
         return;
       }
-      const { data: { session }, error } = await supabase.auth.updateUser({ password });
+      const { error } = await supabase.auth.updateUser({ password });
       if (error) {
         toast.error(error.message ?? "Failed to update password");
         setErrors((prev) => ({ ...prev, password: error.message }));
         return;
       }
+      const { data: { session } } = await supabase.auth.getSession();
       if (session?.access_token) {
         try {
           await api.supabaseUpdatePassword(session.access_token, password);

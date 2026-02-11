@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -17,40 +18,85 @@ import {
   ChevronUp,
   LogOut,
   Shield,
+  GraduationCap,
+  ClipboardCheck,
+  Settings,
+  ClipboardList,
+  MessageCircle,
+  Search,
+  Briefcase,
+  List,
+  Monitor,
+  PhoneOutgoing,
+  PhoneIncoming,
+  BookOpen,
+  Award,
+  CheckCircle,
+  TrendingUp,
+  Activity,
+  Share2,
+  ShieldCheck,
 } from "lucide-react";
 import { useState } from "react";
 import { useUser } from "@/contexts/UserContext";
 
-const mainNav = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/management", label: "Roles & Orgs", icon: Shield },
-  { href: "/dashboard/rep-portal", label: "Rep Portal", icon: Users },
-  { href: "/dashboard/command-center", label: "Client Command Center", icon: Zap },
-  { href: "/dashboard/metrics", label: "Business Metrics", icon: BarChart3 },
-];
-
 const talentSubNav = [
-  { href: "/dashboard/talent/application", label: "Application Process" },
-  { href: "/dashboard/talent/screening", label: "AI Language Screening" },
-  { href: "/dashboard/talent/sourcing", label: "AI Candidate Sourcing" },
-  { href: "/dashboard/talent/candidates", label: "Candidates" },
-  { href: "/dashboard/talent/active-reps", label: "Active Reps" },
-  { href: "/dashboard/talent/screening-list", label: "Screening" },
+  { href: "/dashboard/talent/application", label: "Application Process", icon: ClipboardList },
+  { href: "/dashboard/talent/screening", label: "AI Language Screening", icon: MessageCircle },
+  { href: "/dashboard/talent/sourcing", label: "AI Candidate Sourcing", icon: Search },
+  { href: "/dashboard/talent/candidates", label: "Candidates", icon: Briefcase },
+  { href: "/dashboard/talent/active-reps", label: "Active Reps", icon: Users },
+  { href: "/dashboard/talent/screening-list", label: "Screening", icon: Search },
 ];
 
-const expandableNav = [
-  {
-    label: "Talent",
-    icon: Users,
-    href: "/dashboard/talent",
-    subItems: talentSubNav,
-  },
-  { label: "Clients", icon: Building2, href: "/dashboard/clients", subItems: [] },
-  { label: "Quote Approvals", icon: FileCheck, href: "/dashboard/quote-approvals", subItems: [] },
-  { label: "Campaigns", icon: Megaphone, href: "/dashboard/campaigns", subItems: [] },
-  { label: "Call Center", icon: Phone, href: "/dashboard/call-center", subItems: [] },
-  { label: "AI Coaching", icon: Brain, href: "/dashboard/ai-coaching", subItems: [] },
-  { label: "AI Lead Engagement", icon: Bolt, href: "/dashboard/ai-lead", subItems: [] },
+const campaignsSubNav = [
+  { href: "/dashboard/campaigns", label: "All Campaigns", icon: List },
+  { href: "/dashboard/campaigns/monitor", label: "Campaign Monitor", icon: Monitor },
+  { href: "/dashboard/campaigns/surge-pricing", label: "Surge Pricing Offers", icon: Megaphone },
+  { href: "/dashboard/campaigns/ai-assignments", label: "AI Assignments", icon: Brain },
+];
+
+const callCenterSubNav = [
+  { href: "/dashboard/call-center/outbound", label: "Outbound Calls", icon: PhoneOutgoing },
+  { href: "/dashboard/call-center/inbound", label: "Inbound Center", icon: PhoneIncoming },
+];
+
+const trainingSubNav = [
+  { href: "/dashboard/training/modules", label: "Training Modules", icon: BookOpen },
+  { href: "/dashboard/training/onboarding", label: "Onboarding Admin", icon: ClipboardList },
+  { href: "/dashboard/training/skill-development", label: "Skill Development", icon: Award },
+];
+
+const complianceSubNav = [
+  { href: "/dashboard/compliance", label: "Overview", icon: LayoutDashboard },
+  { href: "/dashboard/compliance/tpi-dnc", label: "TPI & DNC Checker", icon: CheckCircle },
+];
+
+const analyticsSubNav = [
+  { href: "/dashboard/analytics", label: "Overview", icon: LayoutDashboard },
+  { href: "/dashboard/analytics/sales", label: "Sales Analytics", icon: TrendingUp },
+  { href: "/dashboard/analytics/rep-performance", label: "Rep Performance", icon: Activity },
+];
+
+const mainNav = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, subItems: [] },
+  { href: "/dashboard/rep-portal", label: "Rep Portal", icon: Users, subItems: [] },
+  { href: "/dashboard/command-center", label: "Client Command Center", icon: Settings, subItems: [] },
+  { href: "/dashboard/metrics", label: "Business Metrics", icon: BarChart3, subItems: [] },
+  { href: "/dashboard/talent", label: "Talent", icon: Users, subItems: talentSubNav },
+  { href: "/dashboard/clients", label: "Clients", icon: Building2, subItems: [] },
+  { href: "/dashboard/quote-approvals", label: "Quote Approvals", icon: FileCheck, subItems: [] },
+  { href: "/dashboard/campaigns", label: "Campaigns", icon: Megaphone, subItems: campaignsSubNav },
+  { href: "/dashboard/call-center", label: "Call Center", icon: Phone, subItems: callCenterSubNav },
+  { href: "/dashboard/ai-coaching", label: "AI Coaching", icon: Brain, subItems: [] },
+  { href: "/dashboard/ai-lead", label: "AI Lead Engagement", icon: Bolt, subItems: [] },
+  { href: "/dashboard/training", label: "Training", icon: GraduationCap, subItems: trainingSubNav },
+  { href: "/dashboard/compliance", label: "Compliance", icon: Shield, subItems: complianceSubNav },
+  { href: "/dashboard/quality-assurance", label: "Quality Assurance", icon: ShieldCheck, subItems: [] },
+  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, subItems: analyticsSubNav },
+  { href: "/dashboard/knowledge-base", label: "Knowledge Base", icon: BookOpen, subItems: [] },
+  { href: "/dashboard/social-feed", label: "Social Feed", icon: Share2, subItems: [] },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings, subItems: [] },
 ];
 
 export function DashboardSidebar() {
@@ -59,6 +105,11 @@ export function DashboardSidebar() {
   const { user, platformRole, orgs } = useUser();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     Talent: true,
+    Campaigns: true,
+    "Call Center": true,
+    Training: true,
+    Compliance: true,
+    Analytics: true,
   });
 
   function handleLogout() {
@@ -73,39 +124,30 @@ export function DashboardSidebar() {
     setExpanded((prev) => ({ ...prev, [label]: !prev[label] }));
   };
 
+  const displayName =
+    user?.email?.slice(0, user.email.indexOf("@")).replace(/[._-]/g, " ").toUpperCase() ?? "USER";
+
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-zinc-800 bg-zinc-900 dark:bg-zinc-950">
-      <div className="flex h-14 items-center gap-2 border-b border-zinc-800 px-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded bg-zinc-700 text-sm font-bold text-white">
-          V
-        </div>
-        <span className="text-sm font-semibold text-zinc-100">MVP</span>
+    <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-zinc-800 bg-zinc-900 dark:bg-zinc-950">
+      <div className="flex h-14 shrink-0 items-center gap-2 border-b border-zinc-800 px-4">
+        <Image
+          src="/mvplogo.jpg"
+          alt="Sales Workforce Platform"
+          width={36}
+          height={36}
+          className="h-9 w-9 shrink-0 rounded object-cover"
+        />
+        <span className="sr-only">Sales Workforce Platform</span>
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4">
         <ul className="space-y-0.5 px-2">
           {mainNav.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-violet-600 text-white"
-                      : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-                  }`}
-                >
-                  <item.icon className="h-5 w-5 shrink-0" />
-                  {item.label}
-                </Link>
-              </li>
-            );
-          })}
-          {expandableNav.map((item) => {
             const hasSub = item.subItems.length > 0;
             const isOpen = expanded[item.label];
-            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+            const isActive = hasSub
+              ? pathname === item.href || pathname.startsWith(item.href + "/")
+              : pathname === item.href;
             return (
               <li key={item.label}>
                 {hasSub ? (
@@ -124,23 +166,24 @@ export function DashboardSidebar() {
                         {item.label}
                       </span>
                       {isOpen ? (
-                        <ChevronUp className="h-4 w-4" />
+                        <ChevronUp className="h-4 w-4 shrink-0" />
                       ) : (
-                        <ChevronDown className="h-4 w-4" />
+                        <ChevronDown className="h-4 w-4 shrink-0" />
                       )}
                     </button>
                     {isOpen && (
                       <ul className="ml-4 mt-0.5 space-y-0.5 border-l border-zinc-700 pl-3">
-                        {item.subItems.map((sub) => (
-                          <li key={sub.href}>
+                        {item.subItems.map((sub, idx) => (
+                          <li key={`${sub.href}-${sub.label}-${idx}`}>
                             <Link
                               href={sub.href}
-                              className={`block py-2 text-xs font-medium transition-colors ${
+                              className={`flex items-center gap-2 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${
                                 pathname === sub.href
-                                  ? "text-violet-400"
-                                  : "text-zinc-500 hover:text-zinc-300"
+                                  ? "bg-zinc-800 text-zinc-100"
+                                  : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
                               }`}
                             >
+                              {sub.icon ? <sub.icon className="h-4 w-4 shrink-0" /> : null}
                               {sub.label}
                             </Link>
                           </li>
@@ -153,7 +196,7 @@ export function DashboardSidebar() {
                     href={item.href}
                     className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                       isActive
-                        ? "bg-violet-600 text-white"
+                        ? "bg-zinc-800 text-zinc-100"
                         : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
                     }`}
                   >
@@ -167,22 +210,17 @@ export function DashboardSidebar() {
         </ul>
       </nav>
 
-      <div className="border-t border-zinc-800 p-3">
+      <div className="shrink-0 border-t border-zinc-800 p-3">
         <div className="flex items-center gap-3 rounded-lg px-3 py-2">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-600 text-sm font-semibold text-white">
             {user?.email?.slice(0, 1).toUpperCase() ?? "?"}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-zinc-200">
-              {user?.email ?? "User"}
+              {displayName}
             </p>
             <p className="truncate text-xs text-zinc-500">
-              {platformRole === "super_admin"
-                ? "Super Admin"
-                : platformRole === "admin"
-                  ? "Admin"
-                  : "Rep"}
-              {orgs.length > 0 && ` · ${orgs.length} org${orgs.length > 1 ? "s" : ""}`}
+              {user?.email ?? "—"}
             </p>
           </div>
           <button

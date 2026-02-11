@@ -1,4 +1,8 @@
+"use client";
+
 import { type ButtonHTMLAttributes, forwardRef } from "react";
+import { Button as ShadcnButton } from "@/components/ui/shadcn/button";
+import { cn } from "@/lib/utils";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "outline" | "ghost";
@@ -6,6 +10,22 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   fullWidth?: boolean;
   leftIcon?: React.ReactNode;
 }
+
+const variantMap = {
+  primary: "default",
+  secondary: "secondary",
+  outline: "outline",
+  ghost: "ghost",
+} as const;
+
+const variantOverrides = {
+  primary: "bg-[#1a1d29] text-white shadow hover:bg-[#252836] focus-visible:ring-[#1a1d29]",
+  secondary: "bg-white border border-gray-300 text-gray-700 shadow-sm hover:bg-gray-50 focus-visible:ring-gray-400",
+  outline: "border border-gray-300 bg-white text-gray-900 hover:bg-gray-50 focus-visible:ring-gray-400",
+  ghost: "text-gray-700 hover:bg-gray-100 focus-visible:ring-gray-400",
+} as const;
+
+const sizeMap = { sm: "sm" as const, md: "default" as const, lg: "lg" as const };
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
@@ -20,30 +40,17 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    const base =
-      "inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none";
-    const variants = {
-      primary:
-        "bg-gray-900 text-white hover:bg-gray-800",
-      secondary: "bg-white text-black border border-gray-300 hover:bg-gray-50",
-      outline:
-        "border border-zinc-300 text-zinc-900 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-50 dark:hover:bg-zinc-800",
-      ghost: "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800",
-    };
-    const sizes = {
-      sm: "h-9 px-3 text-sm",
-      md: "h-11 px-4 text-sm",
-      lg: "h-12 px-6 text-base",
-    };
     return (
-      <button
+      <ShadcnButton
         ref={ref}
-        className={`${base} ${variants[variant]} ${sizes[size]} ${fullWidth ? "w-full" : ""} ${className}`}
+        variant={variantMap[variant]}
+        size={sizeMap[size]}
+        className={cn(variantOverrides[variant], fullWidth && "w-full", className)}
         {...props}
       >
-        {leftIcon && <span className="shrink-0">{leftIcon}</span>}
+        {leftIcon && <span className="shrink-0 [&_svg]:size-5">{leftIcon}</span>}
         {children}
-      </button>
+      </ShadcnButton>
     );
   }
 );

@@ -25,7 +25,7 @@ export const env = {
   supabaseUrl: raw.supabaseUrl,
   supabaseServiceKey: raw.supabaseServiceKey,
   supabaseAnonKey: raw.supabaseAnonKey,
-  supabaseJwtSecret: raw.supabaseJwtSecret,
+  supabaseJwtSecret: (raw.supabaseJwtSecret || '').trim(),
   frontendUrl: raw.frontendUrl,
   apiBaseUrl: raw.apiBaseUrl,
   sessionSecret: (() => {

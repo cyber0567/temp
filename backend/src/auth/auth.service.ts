@@ -1,5 +1,6 @@
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -32,7 +33,7 @@ export class AuthService {
   /** Dev only: generate a code, store in memory, log to console. Supabase never returns the OTP so this gives a second way to get the code. */
   private devCodeCreateAndLog(email: string): void {
     if (env.nodeEnv !== 'development') return;
-    const code = crypto.randomInt(0, 1e6).toString().padStart(6, '0');
+    const code = crypto.randomInt(0, 1e8).toString().padStart(8, '0');
     AuthService.devVerificationCodes.set(email, {
       code,
       expiresAt: Date.now() + DEV_CODE_EXPIRY_MS,
@@ -48,6 +49,64 @@ export class AuthService {
     if (entry.code !== codeDigits) return false;
     AuthService.devVerificationCodes.delete(email);
     return true;
+  }
+
+  /**
+   * Verify a Supabase-issued JWT (e.g. from email OTP session).
+   * Tries JWKS first (for projects using asymmetric signing keys), then legacy JWT secret (HS256).
+   */
+  private async verifySupabaseAccessToken(
+    accessToken: string,
+  ): Promise<{ payload: { sub?: string; email?: string } } | { error: string; status: 401 | 503 }> {
+    const normalizedUrl = (env.supabaseUrl || '').trim().replace(/\/+$/, '');
+    const hasJwks = !!normalizedUrl;
+    const hasSecret = !!env.supabaseJwtSecret;
+
+    if (hasJwks) {
+      try {
+        const jwksUrl = `${normalizedUrl}/auth/v1/.well-known/jwks.json`;
+        const { payload } = await jwtVerify(
+          accessToken,
+          createRemoteJWKSet(new URL(jwksUrl)),
+          { clockTolerance: 10 },
+        );
+        const sub = payload.sub as string | undefined;
+        const email = (payload.email as string | undefined) ?? '';
+        if (sub) {
+          return { payload: { sub, email } };
+        }
+      } catch {
+        // JWKS failed (e.g. no keys for legacy-only project); fall back to secret
+      }
+    }
+
+    if (hasSecret) {
+      try {
+        const payload = this.jwtService.verify(accessToken, {
+          secret: env.supabaseJwtSecret,
+        }) as { sub?: string; email?: string };
+        return { payload };
+      } catch (err: unknown) {
+        const name = err && typeof err === 'object' && 'name' in err ? (err as { name: string }).name : '';
+        if (name === 'TokenExpiredError') {
+          return { error: 'Verification session expired. Please request a new code and try again.', status: 401 };
+        }
+        if (name === 'JsonWebTokenError') {
+          return {
+            error:
+              'Invalid token. If using Supabase JWT Signing Keys, ensure SUPABASE_URL is correct. Otherwise set SUPABASE_JWT_SECRET to the JWT Secret in Supabase (Project Settings → API).',
+            status: 401,
+          };
+        }
+        return { error: 'Invalid or expired token', status: 401 };
+      }
+    }
+
+    return {
+      error:
+        'Supabase Auth is not configured. Set SUPABASE_URL (and optionally SUPABASE_JWT_SECRET for legacy JWT secret).',
+      status: 503,
+    };
   }
 
   private async upsertProfile(params: {
@@ -146,18 +205,11 @@ export class AuthService {
   }
 
   async exchangeSupabaseSession(accessToken: string) {
-    if (!env.supabaseJwtSecret) {
-      return { error: 'Supabase Auth is not configured (SUPABASE_JWT_SECRET)', status: 503 };
+    const result = await this.verifySupabaseAccessToken(accessToken);
+    if ('error' in result) {
+      return { error: result.error, status: result.status };
     }
-    let payload: { sub?: string; email?: string };
-    try {
-      payload = this.jwtService.verify(accessToken, { secret: env.supabaseJwtSecret }) as {
-        sub?: string;
-        email?: string;
-      };
-    } catch {
-      return { error: 'Invalid or expired token', status: 401 };
-    }
+    const payload = result.payload;
     const supabaseUserId = payload.sub;
     const email = (payload.email ?? '').trim().toLowerCase();
     if (!supabaseUserId || !email) {
@@ -200,15 +252,14 @@ export class AuthService {
   }
 
   async supabaseUpdatePassword(accessToken: string, password: string) {
-    if (!env.supabaseJwtSecret) {
-      return { error: 'Supabase Auth is not configured (SUPABASE_JWT_SECRET)', status: 503 };
+    const result = await this.verifySupabaseAccessToken(accessToken);
+    if ('error' in result) {
+      const message = result.status === 401 && result.error.toLowerCase().includes('expired')
+        ? 'Link expired. Please request a new password reset.'
+        : result.error;
+      return { error: message, status: result.status };
     }
-    let payload: { sub?: string; email?: string };
-    try {
-      payload = this.jwtService.verify(accessToken, { secret: env.supabaseJwtSecret }) as { sub?: string; email?: string };
-    } catch {
-      return { error: 'Invalid or expired token', status: 401 };
-    }
+    const payload = result.payload;
     const supabaseUserId = payload.sub;
     const email = (payload.email ?? '').trim().toLowerCase();
     if (!supabaseUserId) {
@@ -242,7 +293,7 @@ export class AuthService {
 
   async verifyEmail(email: string, code: string) {
     const normalizedEmail = email.trim().toLowerCase();
-    const codeDigits = code.replace(/\D/g, '').slice(0, 6);
+    const codeDigits = code.replace(/\D/g, '').slice(0, 8);
     if (!codeDigits) {
       return { error: 'Invalid verification code.', status: 400 };
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { Suspense, useState, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
@@ -8,9 +8,9 @@ import { AuthCard } from "@/components/ui/AuthCard";
 import { Button } from "@/components/ui/Button";
 import { api, type ApiError } from "@/lib/api";
 
-const CODE_LENGTH = 6;
+const CODE_LENGTH = 8;
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") ?? "";
@@ -104,23 +104,23 @@ export default function VerifyEmailPage() {
       <div className="flex flex-col gap-6 text-center">
         <Link
           href="/login"
-          className="inline-flex items-center gap-1 text-left text-sm font-medium text-gray-600 hover:text-gray-900 w-fit"
+          className="inline-flex items-center gap-1 text-left text-sm font-medium text-gray-700 hover:text-gray-900 w-fit"
         >
           ← Back to sign in
         </Link>
 
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-gray-200 bg-gray-50">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-gray-200 bg-gray-100">
           <ShieldCheck className="h-7 w-7 text-gray-700" strokeWidth={1.5} />
         </div>
 
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-800">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">
             Verify your email
           </h1>
-          <p className="mt-2 text-gray-600">
-            We&apos;ve sent a 6-digit code to
+          <p className="mt-2 text-base text-gray-600">
+            We&apos;ve sent an 8-digit code to
           </p>
-          <p className="mt-1 font-semibold text-gray-800">{email}</p>
+          <p className="mt-1 font-semibold text-gray-900">{email}</p>
         </div>
 
         <form className="flex flex-col gap-4 text-left" onSubmit={handleSubmit} noValidate>
@@ -131,12 +131,12 @@ export default function VerifyEmailPage() {
                 ref={(el) => { inputRefs.current[index] = el; }}
                 type="text"
                 inputMode="numeric"
-                maxLength={6}
+                maxLength={8}
                 autoComplete="one-time-code"
                 value={digit}
                 onChange={(e) => handleChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
-                className="h-12 w-11 rounded-lg border border-gray-300 bg-white text-center text-lg font-semibold text-gray-900 outline-none transition focus:border-[#1a1d29] focus:ring-2 focus:ring-[#1a1d29]/20"
+                className="h-12 w-11 rounded-lg border border-gray-300 bg-white text-center text-lg font-semibold text-gray-900 outline-none transition focus:border-[#1a1d29] focus:ring-1 focus:ring-[#1a1d29]/20 focus:ring-offset-0"
               />
             ))}
           </div>
@@ -145,7 +145,7 @@ export default function VerifyEmailPage() {
           </p>
           {error && (
             <div
-              className="w-full rounded-lg border border-red-200 bg-[#FFEDED] py-3 text-center text-sm font-medium text-red-600"
+              className="w-full rounded-lg border border-red-200 bg-red-50 py-3 text-center text-sm font-medium text-red-700"
               role="alert"
             >
               {error}
@@ -157,13 +157,12 @@ export default function VerifyEmailPage() {
             size="lg"
             fullWidth
             disabled={loading || codeString.length !== CODE_LENGTH || attemptsExceeded}
-            className="bg-[#1a1d29] hover:bg-[#252836]"
           >
             {loading ? "Verifying…" : "Verify email"}
           </Button>
         </form>
 
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-600">
           Didn&apos;t receive the code?{" "}
           <button
             type="button"
@@ -176,5 +175,13 @@ export default function VerifyEmailPage() {
         </p>
       </div>
     </AuthCard>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={<AuthCard><div className="flex justify-center py-8 text-gray-500">Loading…</div></AuthCard>}>
+      <VerifyEmailContent />
+    </Suspense>
   );
 }

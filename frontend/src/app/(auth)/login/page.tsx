@@ -64,7 +64,7 @@ export default function LoginPage() {
       <div className="flex flex-col gap-6 text-center">
         <SwpLogo />
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#1a1d29]">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">
             Welcome to SWP OS V1
           </h1>
           <p className="mt-1 text-sm text-gray-500">
@@ -80,7 +80,6 @@ export default function LoginPage() {
             type="button"
             disabled={loading}
             onClick={handleGoogleSignIn}
-            className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
             leftIcon={
               <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
                 <path
@@ -139,8 +138,7 @@ export default function LoginPage() {
           />
           {formError && (
             <div
-              className="w-full rounded-lg py-3 text-center text-sm font-medium text-red-600"
-              style={{ backgroundColor: "#FEE8E7" }}
+              className="w-full rounded-lg border border-red-200 bg-red-50 py-3 text-center text-sm font-medium text-red-600"
               role="alert"
             >
               Invalid email or password
@@ -152,18 +150,17 @@ export default function LoginPage() {
             size="lg"
             fullWidth
             disabled={loading}
-            className="bg-[#1a1d29] hover:bg-[#252836]"
           >
             {loading ? "Signing in…" : "Sign in"}
           </Button>
         </form>
 
-        <div className="flex items-center justify-between text-sm text-gray-500">
-          <Link href="/forgot-password" className="hover:text-gray-700">
+        <div className="flex items-center justify-between text-sm text-gray-600">
+          <Link href="/forgot-password" className="hover:text-gray-800">
             Forgot password?
           </Link>
-          <Link href="/signup" className="hover:text-gray-700">
-            Need an account? <span className="font-medium text-gray-900 underline underline-offset-2">Sign up</span>
+          <Link href="/signup" className="hover:text-gray-600">
+            Need an account? <span className="font-medium text-gray-900 underline underline-offset-2 hover:text-gray-800">Sign up</span>
           </Link>
         </div>
       </div>
