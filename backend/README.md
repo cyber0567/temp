@@ -1,16 +1,16 @@
-# Express TypeScript API + WebSocket (Supabase)
+# NestJS API + WebSocket (Supabase)
 
-Node.js backend with Express, TypeScript, WebSocket, and **Supabase (hosted PostgreSQL)** for auth and data. There is no local database file — the database lives in your Supabase project in the cloud.
+Node.js backend with **NestJS**, TypeScript, WebSocket (ws), and **Supabase (hosted PostgreSQL)** for auth and data. There is no local database file — the database lives in your Supabase project in the cloud.
 
 ## Features
 
-- **Auth**: Custom JWT (email/password signup + login), Sign in with Google (Passport), forgot-password stub
-- **Database**: PostgreSQL via **Supabase** — tables `public.users` and `public.profiles` (see [Database](#database))
-- **WebSocket**: Authenticated WS at `/ws?token=ACCESS_TOKEN`
+- **Auth**: Custom JWT (email/password signup + login), Sign in with Google (Passport), **Supabase Auth** (email OTP for verification; magic link/reset), RingCentral OAuth
+- **Database**: PostgreSQL via **Supabase** — tables `public.users`, `public.profiles`, organizations, etc. (see [Database](#database))
+- **WebSocket**: Authenticated WS at `/ws?token=ACCESS_TOKEN` (JWT in query or `Sec-WebSocket-Protocol`). Send JSON `{ "event": "message", "data": <payload> }` to broadcast to all connected clients.
 
 ## Setup
 
-1. **Clone and install**
+1. **Install**
 
    ```bash
    npm install
@@ -18,14 +18,15 @@ Node.js backend with Express, TypeScript, WebSocket, and **Supabase (hosted Post
 
 2. **Database (Supabase — required)**
 
-   The backend does not include a local DB. You must create a **Supabase** project and run the SQL migrations there.
+   Create a **Supabase** project and use **Prisma** for migrations.
 
-   - Go to [supabase.com](https://supabase.com) → **New project** → choose org, name, password, region.
-   - In the project: **SQL Editor** → **New query**. Run each migration in order (copy/paste from `supabase/migrations/`):
-     1. `001_profiles.sql` — creates `profiles` and `auth_events`
-     2. `002_add_provider.sql` — adds `provider` to profiles
-     3. `003_custom_auth_users.sql` — creates `users` and adapts `profiles` for custom auth
-   - **Project Settings → API**: copy **Project URL** and **service_role** key (keep secret).
+   - Go to [supabase.com](https://supabase.com) → **New project**.
+   - In **Project Settings → Database** copy the **Connection string** (URI). Use the **direct** connection (port **5432**) for migrations.
+   - Set `DATABASE_URL` in `.env` to that URI (replace `[YOUR-PASSWORD]` with your DB password).
+   - Run migrations: `npm run db:migrate` (or `npx prisma migrate deploy` in production).
+   - **Project Settings → API**: copy **Project URL** and **service_role** key for `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+
+   **Prisma commands:** `npm run db:generate` (generate client), `npm run db:migrate` (dev migrate), `npm run db:migrate:deploy` (deploy migrations), `npm run db:studio` (open Prisma Studio).
 
 3. **Environment**
 
@@ -33,48 +34,54 @@ Node.js backend with Express, TypeScript, WebSocket, and **Supabase (hosted Post
    cp .env.example .env
    ```
 
-   Fill in:
+   Fill in `.env` (see `.env.example`): `DATABASE_URL` (Supabase PostgreSQL URI for Prisma), `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET` (for Supabase session exchange), `FRONTEND_URL`, `SESSION_SECRET`, Google OAuth vars, RingCentral vars.
 
-   - **`SUPABASE_URL`** — Project URL from Supabase (e.g. `https://xxxx.supabase.co`)
-   - **`SUPABASE_SERVICE_ROLE_KEY`** — service_role key from Supabase (Project Settings → API)
-   - `FRONTEND_URL` (e.g. `http://localhost:3000`)
-   - `SESSION_SECRET` (e.g. `openssl rand -hex 32`)
-   - For Google sign-in: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `CALLBACK_URL` (e.g. `http://localhost:3001/auth/google/callback`)
+   **Supabase Auth:** In Dashboard → Authentication → URL Configuration, add Redirect URLs: `http://localhost:3000/auth/callback`, `http://localhost:3000/auth/reset-password`. Run migration **009_supabase_auth_user_id.sql**.
 
 4. **Run**
 
    ```bash
-   npm run dev
+   npm run start:dev
    ```
 
    API: `http://localhost:3001` (or your `PORT`)  
-   **Check database**: `GET http://localhost:3001/db-check` — returns whether Supabase is connected and tables exist.  
+   **Check database**: `GET http://localhost:3001/db-check`  
    WebSocket: `ws://localhost:3001/ws?token=ACCESS_TOKEN`
 
 ## API
 
 | Method | Path | Body | Description |
 |--------|------|------|-------------|
-| POST | `/auth/signup` | `{ email, password, confirmPassword }` | Sign up (confirm password required) |
+| POST | `/auth/signup` | `{ email, password, confirmPassword }` | Sign up |
 | POST | `/auth/login` | `{ email, password }` | Login |
-| POST | `/auth/forgot-password` | `{ email }` | Send reset email |
-| GET | `/auth/google` | — | Returns `{ url }` for Google OAuth redirect |
-| GET | `/auth/google/callback` | — | OAuth callback (redirects to frontend with tokens) |
+| POST | `/auth/forgot-password` | `{ email }` | Stub; frontend uses Supabase reset |
+| POST | `/auth/supabase-session` | `{ access_token }` | Exchange Supabase token for app JWT |
+| POST | `/auth/supabase-update-password` | `{ access_token, password }` | Sync password after Supabase recovery |
+| POST | `/auth/verify-email` | `{ email, code }` | Verify Supabase Auth OTP (6-digit from email) |
+| POST | `/auth/resend-verification` | `{ email }` | Resend Supabase OTP email |
+| GET | `/auth/google` | — | Redirect to Google OAuth |
+| GET | `/auth/google/callback` | — | OAuth callback |
+| GET | `/auth/google/redirect-uri` | — | Get redirect URI for Google Console |
+| POST | `/auth/ringcentral` | — | Get RingCentral auth URL (auth required) |
+| GET | `/auth/ringcentral/callback` | — | RingCentral OAuth callback |
+| GET | `/auth/ringcentral/redirect-uri` | — | Get redirect URI for RingCentral |
+| GET | `/auth/ringcentral/status` | — | Check if RingCentral linked (auth required) |
+| DELETE | `/auth/ringcentral` | — | Disconnect RingCentral (auth required) |
 | GET | `/health` | — | Health check |
-| GET | `/db-check` | — | Database connection and tables (Supabase) |
-| GET | `/me` | Header: `Authorization: Bearer <access_token>` | Current user |
+| GET | `/db-check` | — | Database connection and tables |
+| GET | `/me` | Header: `Authorization: Bearer <token>` | Current user and orgs |
+| GET / POST / PATCH / DELETE | `/orgs` | — | List/create orgs; members CRUD (see org routes) |
+| GET / PATCH | `/admin/users` | — | List users / set platform role (super_admin only) |
 
 ## WebSocket
 
-- **URL**: `ws://localhost:3000/ws?token=YOUR_ACCESS_TOKEN`
-- **Auth**: Pass the JWT `access_token` (from login or Google callback) as query `token`.
+- **URL**: `ws://localhost:3001/ws?token=YOUR_ACCESS_TOKEN`
+- **Auth**: JWT as query `token` or in `Sec-WebSocket-Protocol` as `Bearer <token>`.
 - **Connected**: Server sends `{ type: 'connected', userId, email }`.
-- **Messages**: Send JSON; server broadcasts to all connected clients (optional to scope by room/user).
+- **Messages**: Send JSON `{ "event": "message", "data": <any payload> }`; server broadcasts `{ type: 'message', from, payload }` to all connected clients.
 
 ## Database
 
-- **Where**: The database is **Supabase** (hosted PostgreSQL). There is no database file in this repo — you create a project at [supabase.com](https://supabase.com) and run the migrations in the **SQL Editor**.
-- **Tables**:
-  - **`public.users`** — email/password users (id, email, password_hash, created_at). Created by `003_custom_auth_users.sql`.
-  - **`public.profiles`** — user display info (id, email, full_name, avatar_url, provider, updated_at). Synced on signup, login, and Google sign-in. Created by `001_profiles.sql`; `003` changes `id` to text for custom + OAuth ids.
-- **Verify**: After setting `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `.env` and running the three migrations in Supabase, call **`GET /db-check`**. It returns `{ ok: true, tables: { users: 'ok', profiles: 'ok' } }` when the database is reachable and tables exist.
+Supabase (hosted PostgreSQL). **Migrations are managed by Prisma** (`prisma/schema.prisma` and `prisma/migrations/`). Tables: `users`, `profiles`, `organizations`, `organization_members`, `ringcentral_tokens`. Verify with `GET /db-check`.
+
+**If you already applied the old SQL migrations** (001–009) and want to switch to Prisma: run `npx prisma migrate resolve --applied 20250211000000_init` once (with `DATABASE_URL` set) so Prisma marks the initial migration as applied; then use Prisma for future changes.

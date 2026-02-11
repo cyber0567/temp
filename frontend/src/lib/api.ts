@@ -99,6 +99,22 @@ export const api = {
     });
   },
 
+  /** Exchange Supabase access_token (from magic link OTP) for our JWT + user. */
+  async exchangeSupabaseSession(accessToken: string): Promise<LoginResponse> {
+    return request<LoginResponse>("/auth/supabase-session", {
+      method: "POST",
+      body: JSON.stringify({ access_token: accessToken }),
+    });
+  },
+
+  /** Sync new password to backend after Supabase recovery (updateUser). */
+  async supabaseUpdatePassword(accessToken: string, password: string): Promise<{ ok: boolean }> {
+    return request<{ ok: boolean }>("/auth/supabase-update-password", {
+      method: "POST",
+      body: JSON.stringify({ access_token: accessToken, password }),
+    });
+  },
+
   /** Returns the GitHub OAuth URL (redirect goes to frontend /auth/github/callback). */
   async getGithubAuthUrl(): Promise<OAuthAuthResponse> {
     return request<OAuthAuthResponse>("/auth/github", { method: "GET" });

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MVP",
+  title: "SWP OS V1",
   description: "A Next.js starter with Tailwind CSS and TypeScript",
 };
 
