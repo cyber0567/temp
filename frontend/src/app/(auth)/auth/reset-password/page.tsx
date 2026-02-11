@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { LogoBadge } from "@/components/auth/LogoBadge";
 import { validatePassword, validateConfirmPassword } from "@/lib/validation";
-import { getSupabase } from "@/lib/supabase";
 import { api } from "@/lib/api";
 
 type ResetStatus = "loading" | "ready" | "invalid_link" | "success";
@@ -18,72 +17,25 @@ type ResetStatus = "loading" | "ready" | "invalid_link" | "success";
 export default function ResetPasswordPage() {
   const router = useRouter();
   const [status, setStatus] = useState<ResetStatus>("loading");
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState<{ password?: string; confirmPassword?: string }>({});
   const [loading, setLoading] = useState(false);
-  const hasRecoveryRef = useRef(false);
 
   useEffect(() => {
-    const supabase = getSupabase();
-    if (!supabase) {
+    if (typeof window === "undefined") return;
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const token = hashParams.get("access_token");
+    const type = hashParams.get("type");
+    if (token && type === "recovery") {
+      setAccessToken(token);
       setStatus("ready");
-      return;
+      window.history.replaceState(null, "", window.location.pathname);
+    } else {
+      setStatus("invalid_link");
     }
-    const hasHash = typeof window !== "undefined" && !!window.location.hash;
-
-    // Recover session from reset link hash (access_token & type=recovery)
-    if (hasHash && typeof window !== "undefined") {
-      const hashParams = new URLSearchParams(window.location.hash.slice(1));
-      const accessToken = hashParams.get("access_token");
-      const refreshToken = hashParams.get("refresh_token");
-      const type = hashParams.get("type");
-      if (accessToken && type === "recovery") {
-        supabase.auth
-          .setSession({ access_token: accessToken, refresh_token: refreshToken ?? "" })
-          .then(() => {
-            hasRecoveryRef.current = true;
-            setStatus("ready");
-            window.history.replaceState(null, "", window.location.pathname);
-          })
-          .catch(() => setStatus("invalid_link"));
-        return;
-      }
-    }
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" && session) {
-        hasRecoveryRef.current = true;
-        if (typeof window !== "undefined") {
-          window.history.replaceState(null, "", window.location.pathname);
-        }
-        setStatus("ready");
-      } else if ((event === "INITIAL_SESSION" || event === "SIGNED_IN") && session && hasRecoveryRef.current) {
-        setStatus("ready");
-      }
-    });
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        hasRecoveryRef.current = true;
-        setStatus("ready");
-        if (hasHash && typeof window !== "undefined") {
-          window.history.replaceState(null, "", window.location.pathname);
-        }
-        return;
-      }
-      if (!hasHash) {
-        setStatus("invalid_link");
-        return;
-      }
-    });
-    const timeout = setTimeout(() => {
-      if (!hasRecoveryRef.current) setStatus("invalid_link");
-    }, 5000);
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(timeout);
-    };
-  }, [status]);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -94,28 +46,14 @@ export default function ResetPasswordPage() {
     if (confirmError) newErrors.confirmPassword = confirmError;
     setErrors(newErrors);
     if (passwordError || confirmError) return;
+    if (!accessToken) {
+      toast.error("Reset link invalid or expired");
+      return;
+    }
 
     setLoading(true);
     try {
-      const supabase = getSupabase();
-      if (!supabase) {
-        toast.error("Supabase is not configured.");
-        return;
-      }
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) {
-        toast.error(error.message ?? "Failed to update password");
-        setErrors((prev) => ({ ...prev, password: error.message }));
-        return;
-      }
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        try {
-          await api.supabaseUpdatePassword(session.access_token, password);
-        } catch {
-          // Supabase password updated; backend sync optional
-        }
-      }
+      await api.supabaseUpdatePassword(accessToken, password);
       setStatus("success");
       toast.success("Password updated. Sign in with your new password.");
       setTimeout(() => {
@@ -124,6 +62,7 @@ export default function ResetPasswordPage() {
       }, 2000);
     } catch (err) {
       toast.error((err as { message?: string })?.message ?? "Failed to update password");
+      setErrors((prev) => ({ ...prev, password: "Update failed" }));
     } finally {
       setLoading(false);
     }

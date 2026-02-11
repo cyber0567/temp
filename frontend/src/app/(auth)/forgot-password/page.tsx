@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/Input";
 import { SwpLogo } from "@/components/auth/SwpLogo";
 import { validateEmail } from "@/lib/validation";
 import { api, type ApiError } from "@/lib/api";
-import { getSupabase } from "@/lib/supabase";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -28,19 +27,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setFormError(null);
     try {
-      const supabase = getSupabase();
-      if (supabase) {
-        const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/reset-password` : "";
-        const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-          redirectTo,
-        });
-        if (error) {
-          setFormError(error.message ?? "Failed to send reset link");
-          return;
-        }
-      } else {
-        await api.forgotPassword(email);
-      }
+      await api.forgotPassword(email);
       setSuccess(true);
     } catch (err) {
       const apiErr = err as ApiError;
