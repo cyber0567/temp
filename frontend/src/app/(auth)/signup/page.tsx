@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Mail, Lock } from "lucide-react";
+import { Mail, Lock, AlertCircle } from "lucide-react";
 import { AuthCard } from "@/components/ui/AuthCard";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -63,13 +63,13 @@ export default function SignupPage() {
       <div className="flex flex-col gap-6">
         <Link
           href="/login"
-          className="inline-flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900 w-fit"
+          className="inline-flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900 w-fit"
         >
           ← Back to sign in
         </Link>
 
         <SwpLogo />
-        <h1 className="text-3xl font-bold text-black text-center">
+        <h1 className="text-3xl font-bold text-gray-900 text-center">
           Create your account
         </h1>
 
@@ -87,6 +87,7 @@ export default function SignupPage() {
             leftIcon={<Mail className="h-5 w-5" />}
             error={errors.email}
             autoComplete="email"
+            className="bg-blue-50/70 border-gray-300 focus:bg-white"
           />
           <Input
             label="Password"
@@ -121,14 +122,20 @@ export default function SignupPage() {
           />
           {formError && (
             <div
-              className="w-full rounded-lg border border-red-200 py-3 px-3 text-center text-sm font-medium text-red-600"
-              style={{ backgroundColor: "#FEE8E7" }}
+              className="flex w-full items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm font-medium text-red-600"
               role="alert"
             >
-              {formError}
+              <AlertCircle className="h-5 w-5 shrink-0 text-red-500" />
+              <span>{formError}</span>
             </div>
           )}
-          <Button type="submit" variant="primary" size="lg" fullWidth disabled={loading}>
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            fullWidth
+            disabled={loading}
+          >
             {loading ? "Creating account…" : "Create account"}
           </Button>
         </form>

@@ -1,4 +1,9 @@
+"use client";
+
 import { type InputHTMLAttributes, forwardRef } from "react";
+import { Input as ShadcnInput } from "@/components/ui/shadcn/input";
+import { Label } from "@/components/ui/shadcn/label";
+import { cn } from "@/lib/utils";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -12,23 +17,31 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full">
         {label && (
-          <label
+          <Label
             htmlFor={inputId}
-            className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-zinc-300"
+            className="mb-1.5 block text-[#333333] font-medium dark:text-zinc-300"
           >
             {label}
-          </label>
+          </Label>
         )}
         <div className="relative">
           {leftIcon && (
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#666666]">
               {leftIcon}
             </span>
           )}
-          <input
+          <ShadcnInput
             ref={ref}
             id={inputId}
-            className={`w-full rounded-lg border border-gray-300 bg-white py-2.5 pr-3 text-gray-900 placeholder:text-gray-400 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 ${leftIcon ? "pl-10" : "pl-3"} ${error ? "border-red-500" : ""} ${className}`}
+            className={cn(
+              "h-11 w-full rounded-xl border border-[#E0E0E0] bg-white px-4 py-2.5 text-gray-900 shadow-none focus-visible:bg-white",
+              "placeholder:text-[#A0A0A0] placeholder:font-normal",
+              "focus-visible:border-[#1a1d29] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#1a1d29]/15 focus-visible:ring-offset-0",
+              "dark:border-[#E0E0E0] dark:bg-white dark:text-gray-900 dark:placeholder:text-[#A0A0A0] dark:focus-visible:border-[#1a1d29] dark:focus-visible:ring-[#1a1d29]/15",
+              leftIcon && "pl-11",
+              error && "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/20 dark:border-red-500",
+              className
+            )}
             {...props}
           />
         </div>

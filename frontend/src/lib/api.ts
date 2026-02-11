@@ -83,7 +83,7 @@ export const api = {
     });
   },
 
-  /** Verify email with 6-digit code. Returns token and user on success. */
+  /** Verify email with 8-digit code. Returns token and user on success. */
   async verifyEmail(email: string, code: string): Promise<VerifyEmailResponse> {
     return request<VerifyEmailResponse>("/auth/verify-email", {
       method: "POST",
@@ -91,7 +91,7 @@ export const api = {
     });
   },
 
-  /** Resend 6-digit verification code to email. */
+  /** Resend 8-digit verification code to email. */
   async resendVerification(email: string): Promise<{ message: string }> {
     return request<{ message: string }>("/auth/resend-verification", {
       method: "POST",
