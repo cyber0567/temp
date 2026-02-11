@@ -1,14 +1,11 @@
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-/** All values from .env; see .env.example for required variables. */
 const raw = {
   port: process.env.PORT ?? '3001',
   nodeEnv: process.env.NODE_ENV ?? 'development',
+  databaseUrl: process.env.DATABASE_URL ?? '',
   supabaseUrl: process.env.SUPABASE_URL ?? '',
   supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
   supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? '',
+  supabaseJwtSecret: process.env.SUPABASE_JWT_SECRET ?? '',
   frontendUrl: process.env.FRONTEND_URL ?? '',
   apiBaseUrl: process.env.API_BASE_URL ?? '',
   sessionSecret: process.env.SESSION_SECRET ?? '',
@@ -24,9 +21,11 @@ const raw = {
 export const env = {
   port: parseInt(raw.port, 10),
   nodeEnv: raw.nodeEnv,
+  databaseUrl: raw.databaseUrl,
   supabaseUrl: raw.supabaseUrl,
   supabaseServiceKey: raw.supabaseServiceKey,
   supabaseAnonKey: raw.supabaseAnonKey,
+  supabaseJwtSecret: raw.supabaseJwtSecret,
   frontendUrl: raw.frontendUrl,
   apiBaseUrl: raw.apiBaseUrl,
   sessionSecret: (() => {

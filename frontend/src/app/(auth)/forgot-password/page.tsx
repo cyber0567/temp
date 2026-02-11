@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { toast } from "sonner";
 import { Mail } from "lucide-react";
 import { AuthCard } from "@/components/ui/AuthCard";
 import { Button } from "@/components/ui/Button";
@@ -10,10 +9,12 @@ import { Input } from "@/components/ui/Input";
 import { SwpLogo } from "@/components/auth/SwpLogo";
 import { validateEmail } from "@/lib/validation";
 import { api, type ApiError } from "@/lib/api";
+import { getSupabase } from "@/lib/supabase";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [errors, setErrors] = useState<{ email?: string }>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -21,16 +22,29 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     const emailError = validateEmail(email);
     setErrors(emailError ? { email: emailError } : {});
+    setFormError(null);
     if (emailError) return;
 
     setLoading(true);
+    setFormError(null);
     try {
-      await api.forgotPassword(email);
+      const supabase = getSupabase();
+      if (supabase) {
+        const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/reset-password` : "";
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+          redirectTo,
+        });
+        if (error) {
+          setFormError(error.message ?? "Failed to send reset link");
+          return;
+        }
+      } else {
+        await api.forgotPassword(email);
+      }
       setSuccess(true);
-      toast.success("Check your email for the reset link");
     } catch (err) {
       const apiErr = err as ApiError;
-      toast.error(apiErr.message ?? "Failed to send reset link");
+      setFormError(apiErr.message ?? "Failed to send reset link");
       if (apiErr.errors) {
         setErrors((prev) => ({ ...prev, ...apiErr.errors }));
       }
@@ -42,21 +56,31 @@ export default function ForgotPasswordPage() {
   if (success) {
     return (
       <AuthCard>
-        <div className="flex flex-col gap-6">
-          <SwpLogo />
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-black">
+        <div className="flex flex-col gap-6 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gray-200">
+            <Mail className="h-7 w-7 text-gray-600" strokeWidth={1.5} />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-[#1a1d29]">
               Check your email
             </h1>
             <p className="mt-2 text-gray-600">
-              We&apos;ve sent a password reset link to <strong>{email}</strong>.
+              We&apos;ve sent password reset instructions to
             </p>
+            <p className="mt-0.5 font-semibold text-gray-900">{email}</p>
+          </div>
+          <div
+            className="rounded-lg border border-green-200 py-3 px-3 text-sm font-medium text-green-700"
+            style={{ backgroundColor: "#ECFDF5" }}
+            role="status"
+          >
+            Please check your email for the password reset link. It may take a few minutes to arrive.
           </div>
           <Link
             href="/login"
-            className="rounded-lg bg-gray-900 py-3 text-center text-sm font-medium text-white hover:bg-gray-800"
+            className="inline-flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900"
           >
-            Back to sign in
+            ← Back to sign in
           </Link>
         </div>
       </AuthCard>
@@ -93,11 +117,21 @@ export default function ForgotPasswordPage() {
             onChange={(e) => {
               setEmail(e.target.value);
               if (errors.email) setErrors({});
+              if (formError) setFormError(null);
             }}
             leftIcon={<Mail className="h-5 w-5" />}
             error={errors.email}
             autoComplete="email"
           />
+          {formError && (
+            <div
+              className="w-full rounded-lg py-3 text-center text-sm font-medium text-red-600"
+              style={{ backgroundColor: "#FEE8E7" }}
+              role="alert"
+            >
+              {formError}
+            </div>
+          )}
           <Button type="submit" variant="primary" size="lg" fullWidth disabled={loading}>
             {loading ? "Sending…" : "Send reset link"}
           </Button>

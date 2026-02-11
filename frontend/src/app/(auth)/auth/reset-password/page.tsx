@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/Input";
 import { LogoBadge } from "@/components/auth/LogoBadge";
 import { validatePassword, validateConfirmPassword } from "@/lib/validation";
 import { getSupabase } from "@/lib/supabase";
+import { api } from "@/lib/api";
 
 type ResetStatus = "loading" | "ready" | "invalid_link" | "success";
 
@@ -30,6 +31,26 @@ export default function ResetPasswordPage() {
       return;
     }
     const hasHash = typeof window !== "undefined" && !!window.location.hash;
+
+    // Recover session from reset link hash (access_token & type=recovery)
+    if (hasHash && typeof window !== "undefined") {
+      const hashParams = new URLSearchParams(window.location.hash.slice(1));
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      const type = hashParams.get("type");
+      if (accessToken && type === "recovery") {
+        supabase.auth
+          .setSession({ access_token: accessToken, refresh_token: refreshToken ?? "" })
+          .then(() => {
+            hasRecoveryRef.current = true;
+            setStatus("ready");
+            window.history.replaceState(null, "", window.location.pathname);
+          })
+          .catch(() => setStatus("invalid_link"));
+        return;
+      }
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" && session) {
         hasRecoveryRef.current = true;
@@ -81,11 +102,18 @@ export default function ResetPasswordPage() {
         toast.error("Supabase is not configured.");
         return;
       }
-      const { error } = await supabase.auth.updateUser({ password });
+      const { data: { session }, error } = await supabase.auth.updateUser({ password });
       if (error) {
         toast.error(error.message ?? "Failed to update password");
         setErrors((prev) => ({ ...prev, password: error.message }));
         return;
+      }
+      if (session?.access_token) {
+        try {
+          await api.supabaseUpdatePassword(session.access_token, password);
+        } catch {
+          // Supabase password updated; backend sync optional
+        }
       }
       setStatus("success");
       toast.success("Password updated. Sign in with your new password.");
@@ -160,9 +188,9 @@ export default function ResetPasswordPage() {
         </Link>
         <LogoBadge title="MVP" />
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-black">Set new password</h1>
+          <h1 className="text-3xl font-bold text-black">Enter new password</h1>
           <p className="mt-2 text-gray-600">
-            Enter your new password below.
+            You received a password reset link. Enter your new password below.
           </p>
         </div>
         <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
