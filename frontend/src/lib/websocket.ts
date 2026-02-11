@@ -47,6 +47,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectCountRef = useRef(0);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connectRef = useRef<() => void>(() => {});
 
   const connect = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -85,7 +86,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       if (reconnect && reconnectCountRef.current < reconnectAttempts) {
         reconnectCountRef.current += 1;
         reconnectTimeoutRef.current = setTimeout(() => {
-          connect();
+          connectRef.current();
         }, reconnectInterval);
       }
     };
@@ -107,7 +108,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       wsRef.current.close();
       wsRef.current = null;
     }
-  }, []);
+  }, [reconnectAttempts]);
 
   const send = useCallback((data: string | object) => {
     const ws = wsRef.current;
@@ -117,7 +118,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   }, []);
 
   useEffect(() => {
-    connect();
+    connectRef.current = connect;
+    queueMicrotask(() => connect());
     return () => disconnect();
   }, [connect, disconnect]);
 
