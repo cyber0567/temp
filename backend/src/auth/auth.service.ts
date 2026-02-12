@@ -3,7 +3,6 @@ import * as bcrypt from 'bcrypt';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RingCentralService } from '../config/ringcentral.service';
 import { SupabaseService } from '../config/supabase.service';
@@ -212,7 +211,7 @@ export class AuthService {
 
     let userRow: { id: string; email: string };
     try {
-      const result = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const result = await this.prisma.$transaction(async (tx: any) => {
         const user = await tx.user.create({
           data: { email: normalizedEmail, passwordHash },
           select: { id: true, email: true },
@@ -484,7 +483,7 @@ export class AuthService {
     }
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
-    const prisma = this.prisma as unknown as import('@prisma/client').PrismaClient;
+    const prisma = this.prisma as any;
     await prisma.invitation.create({
       data: {
         email: normalizedEmail,
@@ -506,7 +505,7 @@ export class AuthService {
 
   /** Accept invitation: set password and create account (role USER) in the invited org. */
   async acceptInvite(token: string, password: string) {
-    const prisma = this.prisma as unknown as import('@prisma/client').PrismaClient;
+    const prisma = this.prisma as any;
     const invite = await prisma.invitation.findFirst({
       where: { token },
       select: { id: true, email: true, orgId: true, expiresAt: true },
@@ -530,7 +529,7 @@ export class AuthService {
       return { error: 'Password must be at least 6 characters', status: 400 };
     }
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-    const userRow = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const userRow = await this.prisma.$transaction(async (tx: any) => {
       const user = await tx.user.create({
         data: { email: normalizedEmail, passwordHash },
         select: { id: true, email: true },
