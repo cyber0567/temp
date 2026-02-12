@@ -155,11 +155,11 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <div className="flex items-center justify-between text-sm text-gray-600">
-          <Link href="/forgot-password" className="hover:text-gray-800">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-gray-600">
+          <Link href="/forgot-password" className="hover:text-gray-800 min-w-0">
             Forgot password?
           </Link>
-          <Link href="/signup" className="hover:text-gray-600">
+          <Link href="/signup" className="hover:text-gray-600 min-w-0 text-right sm:text-left">
             Need an account? <span className="font-medium text-gray-900 underline underline-offset-2 hover:text-gray-800">Sign up</span>
           </Link>
         </div>

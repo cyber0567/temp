@@ -19,7 +19,13 @@ export type OrgRole = "admin" | "member" | "viewer";
 export type PlatformRole = "rep" | "admin" | "super_admin";
 
 export type MeResponse = {
-  user: { id: string; email?: string; platformRole: PlatformRole } | null;
+  user: {
+    id: string;
+    email?: string;
+    platformRole: PlatformRole;
+    fullName?: string | null;
+    avatarUrl?: string | null;
+  } | null;
   orgs: { id: string; name: string; slug: string; role: OrgRole }[];
 };
 
@@ -227,4 +233,59 @@ export const api = {
   }> {
     return request(`/admin/users`, { auth: true });
   },
+
+  /** Get all settings (profile, notifications, organization, compliance, quality). */
+  async getSettings(orgId?: string): Promise<SettingsResponse> {
+    const url = orgId ? `/settings?orgId=${encodeURIComponent(orgId)}` : "/settings";
+    return request<SettingsResponse>(url, { auth: true });
+  },
+
+  /** Save settings (profile, notifications, and/or organization/compliance/quality). */
+  async saveSettings(payload: SaveSettingsPayload): Promise<SettingsResponse> {
+    return request<SettingsResponse>("/settings", {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+      auth: true,
+    });
+  },
+};
+
+export type SettingsResponse = {
+  profile: { fullName: string | null; timezone: string; currency: string; avatarUrl: string | null };
+  notifications: {
+    emailAlerts: boolean;
+    flaggedCalls: boolean;
+    dailyDigest: boolean;
+    weeklyReport: boolean;
+  };
+  organization: {
+    id: string;
+    name: string;
+    industry: string;
+    companySize: string;
+  } | null;
+  compliance: {
+    autoReview: boolean;
+    requireDisclosure: boolean;
+    autoFlagThreshold: number;
+  } | null;
+  quality: {
+    minQaScore: number;
+    autoApproveThreshold: number;
+    enableEscalation: boolean;
+  } | null;
+  orgId: string | null;
+};
+
+export type SaveSettingsPayload = {
+  profile?: { fullName?: string; timezone?: string; currency?: string; avatarUrl?: string | null };
+  notifications?: {
+    emailAlerts?: boolean;
+    flaggedCalls?: boolean;
+    dailyDigest?: boolean;
+    weeklyReport?: boolean;
+  };
+  organization?: { orgId: string; name?: string; industry?: string; companySize?: string };
+  compliance?: { autoReview?: boolean; requireDisclosure?: boolean; autoFlagThreshold?: number };
+  quality?: { minQaScore?: number; autoApproveThreshold?: number; enableEscalation?: boolean };
 };

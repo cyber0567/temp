@@ -1,6 +1,6 @@
 export default function CampaignMonitorPage() {
   return (
-    <div className="p-8">
+    <div>
       <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
         Campaign Monitor
       </h1>

@@ -36,9 +36,11 @@ import {
   Activity,
   Share2,
   ShieldCheck,
+  X,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useUser } from "@/contexts/UserContext";
+import { cn } from "@/lib/utils";
 
 const talentSubNav = [
   { href: "/dashboard/talent/application", label: "Application Process", icon: ClipboardList },
@@ -99,7 +101,12 @@ const mainNav = [
   { href: "/dashboard/settings", label: "Settings", icon: Settings, subItems: [] },
 ];
 
-export function DashboardSidebar() {
+type DashboardSidebarProps = {
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
+};
+
+export function DashboardSidebar({ mobileOpen = false, onMobileClose }: DashboardSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, platformRole, orgs } = useUser();
@@ -127,19 +134,48 @@ export function DashboardSidebar() {
   };
 
   const displayName =
-    user?.email?.slice(0, user.email.indexOf("@")).replace(/[._-]/g, " ").toUpperCase() ?? "USER";
+    (user?.fullName?.trim() ||
+      user?.email?.slice(0, user.email.indexOf("@")).replace(/[._-]/g, " ").toUpperCase()) ??
+    "USER";
+
+  const onMobileCloseRef = useRef(onMobileClose);
+  onMobileCloseRef.current = onMobileClose;
+
+  // Close mobile sidebar only when the route actually changes (user navigated)
+  useEffect(() => {
+    onMobileCloseRef.current?.();
+  }, [pathname]);
 
   return (
-    <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-zinc-800 bg-zinc-900 dark:bg-zinc-950">
-      <div className="flex h-14 shrink-0 items-center gap-2 border-b border-zinc-800 px-4">
-        <Image
-          src="/mvplogo.jpg"
-          alt="Sales Workforce Platform"
-          width={36}
-          height={36}
-          className="h-9 w-9 shrink-0 rounded object-cover"
-        />
-        <span className="sr-only">Sales Workforce Platform</span>
+    <aside
+      className={cn(
+        "fixed inset-y-0 left-0 z-50 flex h-screen w-64 max-w-[85vw] shrink-0 flex-col border-r border-zinc-800 bg-zinc-900 shadow-xl",
+        "transition-transform duration-200 ease-out",
+        "md:relative md:sticky md:top-0 md:max-w-none md:shadow-none",
+        "-translate-x-full md:translate-x-0",
+        mobileOpen && "translate-x-0"
+      )}
+      aria-hidden={!mobileOpen}
+    >
+      <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-zinc-800 px-4 md:justify-start">
+        <div className="flex items-center gap-2">
+          <Image
+            src="/mvplogo.jpg"
+            alt="Sales Workforce Platform"
+            width={36}
+            height={36}
+            className="h-9 w-9 shrink-0 rounded object-cover"
+          />
+          <span className="sr-only">Sales Workforce Platform</span>
+        </div>
+        <button
+          type="button"
+          onClick={onMobileClose}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 md:hidden"
+          aria-label="Close menu"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4">
@@ -214,8 +250,12 @@ export function DashboardSidebar() {
 
       <div className="shrink-0 border-t border-zinc-800 p-3">
         <div className="flex items-center gap-3 rounded-lg px-3 py-2">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-600 text-sm font-semibold text-white">
-            {user?.email?.slice(0, 1).toUpperCase() ?? "?"}
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-600 text-sm font-semibold text-white">
+            {user?.avatarUrl ? (
+              <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              (user?.fullName || user?.email)?.slice(0, 1).toUpperCase() ?? "?"
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-zinc-200">

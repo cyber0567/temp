@@ -7,6 +7,7 @@ import { MeModule } from './me/me.module';
 import { OrgsModule } from './orgs/orgs.module';
 import { AdminModule } from './admin/admin.module';
 import { WsModule } from './ws/ws.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { WsModule } from './ws/ws.module';
     OrgsModule,
     AdminModule,
     WsModule,
+    SettingsModule,
   ],
 })
 export class AppModule {}

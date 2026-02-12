@@ -16,18 +16,18 @@ export default function ManagementPage() {
   return (
     <>
       {/* Hero section - matches Campaign Command Center */}
-      <section className="bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-700 px-6 py-8 lg:px-8">
+      <section className="bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-700 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-white/20">
-                <Shield className="h-7 w-7 text-white" />
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/20 sm:h-12 sm:w-12">
+                <Shield className="h-6 w-6 text-white sm:h-7 sm:w-7" />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-white sm:text-3xl">
+              <div className="min-w-0">
+                <h1 className="text-xl font-bold text-white sm:text-2xl lg:text-3xl truncate">
                   Roles & Organizations
                 </h1>
-                <p className="text-white/90">Manage organizations and platform roles</p>
+                <p className="text-sm text-white/90 sm:text-base">Manage organizations and platform roles</p>
               </div>
             </div>
           </div>
@@ -35,7 +35,7 @@ export default function ManagementPage() {
       </section>
 
       {/* Content section */}
-      <section className="flex-1 px-6 py-8 lg:px-8">
+      <section className="flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div className="mx-auto max-w-7xl">
           {/* Tabs - matches dashboard style */}
           <div className="border-b border-zinc-200 dark:border-zinc-700">

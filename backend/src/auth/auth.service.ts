@@ -127,9 +127,10 @@ export class AuthService {
       },
       update: {
         email: params.email,
-        fullName: params.fullName ?? null,
-        avatarUrl: params.avatarUrl ?? null,
-        provider: params.provider ?? null,
+        // Only overwrite profile fields when explicitly provided (e.g. OAuth); do not clear on login
+        ...(params.fullName !== undefined && { fullName: params.fullName ?? null }),
+        ...(params.avatarUrl !== undefined && { avatarUrl: params.avatarUrl ?? null }),
+        ...(params.provider !== undefined && { provider: params.provider ?? null }),
       },
     });
   }
