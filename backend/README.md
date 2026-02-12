@@ -90,3 +90,11 @@ Supabase (hosted PostgreSQL). **Migrations are managed by Prisma** (`prisma/sche
 **User roles and orgs** are read and written only through **Prisma** (not the Supabase client). So platform role (`profiles.platform_role`) and org membership (`organization_members`) stay in sync with the schema. Run `npx prisma migrate deploy` (or `npm run db:migrate:deploy`) once so the tables exist; after that you do not need to change the database schema for roles and orgs.
 
 **If you already applied the old SQL migrations** (001–009) and want to switch to Prisma: run `npx prisma migrate resolve --applied 20250211000000_init` once (with `DATABASE_URL` set) so Prisma marks the initial migration as applied; then use Prisma for future changes.
+
+## RingCentral OAuth
+
+**OAU-109 "Redirect URIs do not match"** — The `RINGCENTRAL_CALLBACK_URL` in `.env` must match *exactly* what’s in RingCentral Developer Portal → your app → Auth → Redirect URI.
+
+- Call `GET /auth/ringcentral/redirect-uri` to see the exact value your backend uses.
+- Add that value to RingCentral (and remove any old/wrong URIs).
+- Protocol, host, port, and path must all match (no trailing slash unless used consistently).

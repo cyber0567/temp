@@ -263,8 +263,14 @@ export class AuthController {
     const redirectUri = env.ringcentralCallbackUrl || 'http://localhost:3001/auth/ringcentral/callback';
     return {
       redirect_uri: redirectUri,
-      message:
-        'Add this EXACT value in RingCentral Developer Portal → your app → Auth → Redirect URI. No trailing slash.',
+      message: 'Add this EXACT value in RingCentral Developer Portal → your app → Auth → Redirect URI.',
+      checklist: [
+        'Protocol must match (http vs https)',
+        'Host must match (localhost vs 127.0.0.1)',
+        'Port must match if non-standard',
+        'Path must match exactly',
+        'No trailing slash (unless you use it consistently everywhere)',
+      ],
     };
   }
 
