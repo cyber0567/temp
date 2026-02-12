@@ -67,6 +67,9 @@ Node.js backend with **NestJS**, TypeScript, WebSocket (ws), and **Supabase (hos
 | GET | `/auth/ringcentral/redirect-uri` | — | Get redirect URI for RingCentral |
 | GET | `/auth/ringcentral/status` | — | Check if RingCentral linked (auth required) |
 | DELETE | `/auth/ringcentral` | — | Disconnect RingCentral (auth required) |
+| GET | `/integrations/ringcentral/auth` | `?state=JWT` | Server redirect to RingCentral OAuth |
+| GET | `/integrations/ringcentral/init` | — | Get init URL for redirect flow (auth required) |
+| GET | `/integrations/ringcentral/status` | — | Connection status `{ connected, expiresAt }` (auth required) |
 | GET | `/health` | — | Health check |
 | GET | `/db-check` | — | Database connection and tables |
 | GET | `/me` | Header: `Authorization: Bearer <token>` | Current user and orgs |

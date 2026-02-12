@@ -260,9 +260,26 @@ export const api = {
     });
   },
 
+  /**
+   * Get RingCentral init URL for redirect flow.
+   * Returns backend URL; frontend does window.location.href = url.
+   * Backend then redirects to RingCentral OAuth.
+   */
+  async getRingCentralInitUrl(): Promise<{ url: string }> {
+    return request<{ url: string }>("/integrations/ringcentral/init", { auth: true });
+  },
+
   /** Check if RingCentral is connected (requires auth). */
-  async getRingCentralStatus(): Promise<{ connected: boolean }> {
-    return request<{ connected: boolean }>("/auth/ringcentral/status", { auth: true });
+  async getRingCentralStatus(): Promise<{ connected: boolean; expiresAt?: string | null }> {
+    try {
+      return await request<{ connected: boolean; expiresAt?: string | null }>(
+        "/integrations/ringcentral/status",
+        { auth: true }
+      );
+    } catch {
+      // Fallback for backends without integrations module
+      return request<{ connected: boolean }>("/auth/ringcentral/status", { auth: true });
+    }
   },
 
   /** Disconnect RingCentral (remove stored tokens). Requires auth. */

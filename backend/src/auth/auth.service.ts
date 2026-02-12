@@ -567,4 +567,19 @@ export class AuthService {
     const authUrl = platform.loginUrl({ state, redirectUri: env.ringcentralCallbackUrl });
     return { authUrl };
   }
+
+  /**
+   * Returns backend init URL for OAuth flow.
+   * Frontend redirects user here; backend then redirects to RingCentral.
+   * State JWT is short-lived and contains userId.
+   */
+  getRingCentralInitUrl(userId: string): { url: string } {
+    const initState = this.jwtService.sign(
+      { userId, purpose: 'rc_init', nonce: crypto.randomBytes(16).toString('hex') },
+      { secret: env.sessionSecret, expiresIn: '5m' },
+    );
+    const base = env.apiBaseUrl || `http://localhost:${env.port}`;
+    const url = `${base.replace(/\/+$/, '')}/integrations/ringcentral/auth?state=${initState}`;
+    return { url };
+  }
 }
