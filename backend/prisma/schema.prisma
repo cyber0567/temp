@@ -7,9 +7,7 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
 }
 
 enum OrgRole {
@@ -29,30 +27,56 @@ model User {
   email          String    @unique
   passwordHash   String    @map("password_hash")
   supabaseUserId String?   @unique @map("supabase_user_id") @db.Uuid
+  emailVerified  Boolean   @default(false) @map("email_verified")
   createdAt      DateTime  @default(now()) @map("created_at")
   @@map("users")
 }
 
 model Profile {
-  id           String        @id // text: custom id (e.g. uuid or google-xxx)
-  email        String?
-  fullName     String?       @map("full_name")
-  avatarUrl    String?       @map("avatar_url")
-  provider     String?
-  platformRole PlatformRole @default(rep) @map("platform_role")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
+  id             String        @id // same as User.id
+  email          String?
+  fullName       String?       @map("full_name")
+  avatarUrl      String?       @map("avatar_url")
+  provider       String?
+  platformRole   PlatformRole  @default(rep) @map("platform_role")
+  active         Boolean       @default(true)
+  organizationId String?       @map("organization_id") @db.Uuid
+  timezone       String?       @default("UTC")
+  currency       String?       @default("USD")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   @@map("profiles")
 }
 
 model Organization {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String
-  slug      String   @unique
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  members   OrganizationMember[]
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String   @unique
+  industry    String?
+  companySize String?  @map("company_size")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  members     OrganizationMember[]
+  profiles    Profile[]
+  invitations Invitation[]
+  compliance  OrgComplianceSettings?
+  quality     OrgQualitySettings?
   @@map("organizations")
+}
+
+model Invitation {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String
+  orgId     String   @map("org_id") @db.Uuid
+  invitedBy String  @map("invited_by")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  @@index([email])
+  @@index([token])
+  @@map("invitations")
 }
 
 model OrganizationMember {
@@ -78,4 +102,40 @@ model RingcentralToken {
   updatedAt    DateTime @updatedAt @map("updated_at")
   @@unique([userId])
   @@map("ringcentral_tokens")
+}
+
+model UserNotificationSettings {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @unique @map("user_id")
+  emailAlerts  Boolean  @default(true) @map("email_alerts")
+  flaggedCalls Boolean  @default(true) @map("flagged_calls")
+  dailyDigest  Boolean  @default(false) @map("daily_digest")
+  weeklyReport Boolean  @default(true) @map("weekly_report")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  @@map("user_notification_settings")
+}
+
+model OrgComplianceSettings {
+  id               String   @id @default(uuid()) @db.Uuid
+  orgId            String   @unique @map("org_id") @db.Uuid
+  autoReview       Boolean  @default(true) @map("auto_review")
+  requireDisclosure Boolean @default(true) @map("require_disclosure")
+  autoFlagThreshold Int    @default(60) @map("auto_flag_threshold")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  org              Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  @@map("org_compliance_settings")
+}
+
+model OrgQualitySettings {
+  id                   String   @id @default(uuid()) @db.Uuid
+  orgId                String   @unique @map("org_id") @db.Uuid
+  minQaScore            Int     @default(70) @map("min_qa_score")
+  autoApproveThreshold  Int     @default(85) @map("auto_approve_threshold")
+  enableEscalation      Boolean  @default(true) @map("enable_escalation")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+  org                   Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  @@map("org_quality_settings")
 }

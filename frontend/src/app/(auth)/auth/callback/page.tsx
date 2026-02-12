@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { getDashboardRedirectForRole } from "@/lib/roles";
 import { api } from "@/lib/api";
 
 function AuthCallbackContent() {
@@ -17,13 +18,13 @@ function AuthCallbackContent() {
     // Google (or other) callback with ?token= & user=
     if (token) {
       try {
-        const user = userParam ? (JSON.parse(decodeURIComponent(userParam)) as { id: string; email?: string }) : { id: "", email: "" };
+        const user = userParam ? (JSON.parse(decodeURIComponent(userParam)) as { id: string; email?: string; platformRole?: "rep" | "admin" | "super_admin" }) : { id: "", email: "" };
         if (typeof window !== "undefined") {
           localStorage.setItem("token", token);
           localStorage.setItem("user", JSON.stringify(user));
         }
         queueMicrotask(() => setStatus("success"));
-        router.replace("/dashboard");
+        router.replace(user.platformRole ? getDashboardRedirectForRole(user.platformRole) : "/dashboard");
       } catch {
         queueMicrotask(() => setStatus("error"));
         toast.error("Invalid callback data");
@@ -50,7 +51,7 @@ function AuthCallbackContent() {
               localStorage.setItem("user", JSON.stringify(res.user));
             }
             setStatus("success");
-            router.replace("/dashboard");
+            router.replace(getDashboardRedirectForRole(res.user.platformRole));
           })
           .catch(() => {
             setStatus("error");

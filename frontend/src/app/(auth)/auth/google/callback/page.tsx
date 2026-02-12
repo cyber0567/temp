@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { getDashboardRedirectForRole } from "@/lib/roles";
 import { api, type ApiError } from "@/lib/api";
 
 function GoogleCallbackContent() {
@@ -34,7 +35,7 @@ function GoogleCallbackContent() {
           localStorage.setItem("user", JSON.stringify(res.user));
         }
         setStatus("success");
-        router.replace("/dashboard");
+        router.replace(getDashboardRedirectForRole(res.user.platformRole));
       })
       .catch((err: ApiError) => {
         setStatus("error");

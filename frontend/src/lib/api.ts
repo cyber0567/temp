@@ -7,10 +7,22 @@ export const API_URL = API_BASE;
 
 export type ApiError = { message: string; code?: string; errors?: Record<string, string> };
 
-export type LoginResponse = { user: { id: string; email: string; name?: string }; token: string };
-export type SignupResponse = { user: { id: string; email: string; name?: string }; token: string };
+/** User shape returned by auth (login/verify/exchange) and /me */
+export type AuthUser = {
+  id: string;
+  email?: string;
+  platformRole: PlatformRole;
+  fullName?: string | null;
+  avatarUrl?: string | null;
+  /** Primary org (profile.organizationId). Used for settings and org-scoped data. */
+  organizationId?: string | null;
+  organization?: { id: string; name: string; slug: string } | null;
+};
+
+export type LoginResponse = { user: AuthUser; token: string };
+export type SignupResponse = { user: { id: string; email: string; name?: string }; token?: string };
 export type ForgotPasswordResponse = { message: string };
-export type VerifyEmailResponse = { user: { id: string; email: string }; token: string };
+export type VerifyEmailResponse = { user: AuthUser; token: string };
 export type OAuthAuthResponse = { url: string };
 
 export type OrgRole = "admin" | "member" | "viewer";
@@ -19,15 +31,27 @@ export type OrgRole = "admin" | "member" | "viewer";
 export type PlatformRole = "rep" | "admin" | "super_admin";
 
 export type MeResponse = {
-  user: { id: string; email?: string; platformRole: PlatformRole } | null;
+  user: AuthUser | null;
   orgs: { id: string; name: string; slug: string; role: OrgRole }[];
 };
 
 export type OrgResponse = { id: string; name: string; slug: string; role?: OrgRole };
 
-async function getToken(): Promise<string | null> {
+/** Get stored auth token (for conditional /me and auth checks). */
+export async function getToken(): Promise<string | null> {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("token");
+}
+
+/** Clear all client caches on logout (localStorage + sessionStorage). */
+export function clearAllCaches(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.clear();
+    sessionStorage.clear();
+  } catch {
+    // ignore
+  }
 }
 
 async function request<T>(
@@ -53,6 +77,9 @@ async function request<T>(
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    if (res.status === 401 && auth && typeof window !== "undefined") {
+      localStorage.removeItem("token");
+    }
     const err: ApiError = (data as ApiError)?.message
       ? (data as ApiError)
       : { message: (data as { error?: string })?.error ?? `Request failed: ${res.status}` };
@@ -69,10 +96,18 @@ export const api = {
     });
   },
 
-  async signup(email: string, password: string, confirmPassword: string): Promise<SignupResponse> {
+  async signup(
+    email: string,
+    password: string,
+    confirmPassword: string,
+  ): Promise<SignupResponse> {
     return request<SignupResponse>("/auth/signup", {
       method: "POST",
-      body: JSON.stringify({ email: email.trim(), password, confirmPassword }),
+      body: JSON.stringify({
+        email: email.trim(),
+        password,
+        confirmPassword,
+      }),
     });
   },
 
@@ -80,6 +115,14 @@ export const api = {
     return request<ForgotPasswordResponse>("/auth/forgot-password", {
       method: "POST",
       body: JSON.stringify({ email: email.trim() }),
+    });
+  },
+
+  /** Accept org invitation: set password and create account (role USER). */
+  async acceptInvite(token: string, password: string): Promise<LoginResponse> {
+    return request<LoginResponse>("/auth/accept-invite", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
     });
   },
 
@@ -160,16 +203,34 @@ export const api = {
     });
   },
 
-  /** List org members (org admin only). */
-  async getOrgMembers(orgId: string): Promise<{ members: { user_id: string; role: OrgRole; created_at: string }[] }> {
+  /** List org members (org admin only). Returns email and full_name for display. */
+  async getOrgMembers(
+    orgId: string
+  ): Promise<{
+    members: {
+      user_id: string;
+      email: string | null;
+      full_name: string | null;
+      role: OrgRole;
+      created_at: string;
+    }[];
+  }> {
     return request(`/orgs/${orgId}/members`, { auth: true });
   },
 
-  /** Add member to org (org admin only). */
-  async addOrgMember(orgId: string, userId: string, role?: OrgRole): Promise<{ member: { user_id: string; role: string } }> {
+  /** Add member to org by userId or email (org admin only). */
+  async addOrgMember(
+    orgId: string,
+    userIdOrEmail: string,
+    role?: OrgRole,
+    options?: { byEmail?: boolean }
+  ): Promise<{ member: { user_id: string; role: string } }> {
+    const body = options?.byEmail
+      ? { email: userIdOrEmail.trim(), role: role ?? "member" }
+      : { userId: userIdOrEmail.trim(), role: role ?? "member" };
     return request(`/orgs/${orgId}/members`, {
       method: "POST",
-      body: JSON.stringify({ userId, role: role ?? "member" }),
+      body: JSON.stringify(body),
       auth: true,
     });
   },
@@ -221,10 +282,75 @@ export const api = {
     });
   },
 
-  /** List all users (super_admin only). */
+  /** List all users (admin/super_admin). */
   async getAdminUsers(): Promise<{
-    users: { id: string; email?: string; full_name?: string; platform_role: PlatformRole; provider?: string }[];
+    users: { id: string; email?: string; full_name?: string; platform_role: PlatformRole; provider?: string; active?: boolean }[];
   }> {
     return request(`/admin/users`, { auth: true });
   },
+
+  /** Remove user (super_admin only). Deletes user and profile. */
+  async removeUser(userId: string): Promise<{ ok: boolean }> {
+    return request(`/admin/users/${userId}`, { method: "DELETE", auth: true });
+  },
+
+  /** Delete organization (org admin of that org or super_admin). */
+  async deleteOrg(orgId: string): Promise<{ ok: boolean }> {
+    return request(`/orgs/${orgId}`, { method: "DELETE", auth: true });
+  },
+
+  /** Get all settings (profile, notifications, organization, compliance, quality). */
+  async getSettings(orgId?: string): Promise<SettingsResponse> {
+    const url = orgId ? `/settings?orgId=${encodeURIComponent(orgId)}` : "/settings";
+    return request<SettingsResponse>(url, { auth: true });
+  },
+
+  /** Save settings (profile, notifications, and/or organization/compliance/quality). */
+  async saveSettings(payload: SaveSettingsPayload): Promise<SettingsResponse> {
+    return request<SettingsResponse>("/settings", {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+      auth: true,
+    });
+  },
+};
+
+export type SettingsResponse = {
+  profile: { fullName: string | null; timezone: string; currency: string; avatarUrl: string | null };
+  notifications: {
+    emailAlerts: boolean;
+    flaggedCalls: boolean;
+    dailyDigest: boolean;
+    weeklyReport: boolean;
+  };
+  organization: {
+    id: string;
+    name: string;
+    industry: string;
+    companySize: string;
+  } | null;
+  compliance: {
+    autoReview: boolean;
+    requireDisclosure: boolean;
+    autoFlagThreshold: number;
+  } | null;
+  quality: {
+    minQaScore: number;
+    autoApproveThreshold: number;
+    enableEscalation: boolean;
+  } | null;
+  orgId: string | null;
+};
+
+export type SaveSettingsPayload = {
+  profile?: { fullName?: string; timezone?: string; currency?: string; avatarUrl?: string | null };
+  notifications?: {
+    emailAlerts?: boolean;
+    flaggedCalls?: boolean;
+    dailyDigest?: boolean;
+    weeklyReport?: boolean;
+  };
+  organization?: { orgId: string; name?: string; industry?: string; companySize?: string };
+  compliance?: { autoReview?: boolean; requireDisclosure?: boolean; autoFlagThreshold?: number };
+  quality?: { minQaScore?: number; autoApproveThreshold?: number; enableEscalation?: boolean };
 };

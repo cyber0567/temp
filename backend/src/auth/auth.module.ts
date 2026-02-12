@@ -8,6 +8,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { OrgRoleGuard } from '../common/guards/org-role.guard';
 import { PlatformRoleGuard } from '../common/guards/platform-role.guard';
 import { env } from '../config/env';
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { env } from '../config/env';
       secret: env.sessionSecret,
       signOptions: { expiresIn: '7d' },
     }),
+    PrismaModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, GoogleStrategy, JwtAuthGuard, OrgRoleGuard, PlatformRoleGuard],

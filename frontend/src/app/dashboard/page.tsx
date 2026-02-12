@@ -1,12 +1,16 @@
-import { CampaignCommandCenter } from "@/components/dashboard/CampaignCommandCenter";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+};
 
 export default function DashboardPage() {
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+    <div>
+      <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-50 sm:text-2xl">
         Dashboard
       </h1>
-      <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+      <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400 sm:text-base">
         Placeholder — content coming soon.
       </p>
     </div>);
