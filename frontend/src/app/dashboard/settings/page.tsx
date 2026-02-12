@@ -211,6 +211,7 @@ export default function SettingsPage() {
   }
 
   return (
+    <div className="p-4 sm:p-6 lg:p-8">
     <div className="flex flex-col gap-4 bg-white p-4 dark:bg-zinc-50 sm:gap-6 sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -563,6 +564,7 @@ export default function SettingsPage() {
           )}
         </div>
       )}
+    </div>
     </div>
   );
 }
