@@ -3,6 +3,7 @@ import * as bcrypt from 'bcrypt';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RingCentralService } from '../config/ringcentral.service';
 import { SupabaseService } from '../config/supabase.service';
@@ -211,7 +212,7 @@ export class AuthService {
 
     let userRow: { id: string; email: string };
     try {
-      const result = await this.prisma.$transaction(async (tx) => {
+      const result = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         const user = await tx.user.create({
           data: { email: normalizedEmail, passwordHash },
           select: { id: true, email: true },
@@ -483,7 +484,8 @@ export class AuthService {
     }
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
-    await this.prisma.invitation.create({
+    const prisma = this.prisma as unknown as import('@prisma/client').PrismaClient;
+    await prisma.invitation.create({
       data: {
         email: normalizedEmail,
         orgId,
@@ -504,7 +506,8 @@ export class AuthService {
 
   /** Accept invitation: set password and create account (role USER) in the invited org. */
   async acceptInvite(token: string, password: string) {
-    const invite = await this.prisma.invitation.findFirst({
+    const prisma = this.prisma as unknown as import('@prisma/client').PrismaClient;
+    const invite = await prisma.invitation.findFirst({
       where: { token },
       select: { id: true, email: true, orgId: true, expiresAt: true },
     });
@@ -512,7 +515,7 @@ export class AuthService {
       return { error: 'Invalid or expired invitation link', status: 400 };
     }
     if (invite.expiresAt < new Date()) {
-      await this.prisma.invitation.deleteMany({ where: { token } });
+      await prisma.invitation.deleteMany({ where: { token } });
       return { error: 'Invitation has expired', status: 400 };
     }
     const normalizedEmail = invite.email.trim().toLowerCase();
@@ -527,7 +530,7 @@ export class AuthService {
       return { error: 'Password must be at least 6 characters', status: 400 };
     }
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-    const userRow = await this.prisma.$transaction(async (tx) => {
+    const userRow = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const user = await tx.user.create({
         data: { email: normalizedEmail, passwordHash },
         select: { id: true, email: true },

@@ -1,4 +1,5 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
+import type { Organization } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/user.decorator';
@@ -42,10 +43,12 @@ export class MeController {
     const organization = profile?.organization
       ? { id: profile.organization.id, name: profile.organization.name, slug: profile.organization.slug }
       : null;
+    type OrgRow = Pick<Organization, 'id' | 'name' | 'slug'>;
+    type MemberRow = { org: { id: string; name: string; slug: string }; role: string };
     const orgs =
       platformRole === 'super_admin'
-        ? allOrgs.map((o) => ({ id: o.id, name: o.name, slug: o.slug, role: 'admin' as const }))
-        : members.map((m) => ({
+        ? (allOrgs as OrgRow[]).map((o: OrgRow) => ({ id: o.id, name: o.name, slug: o.slug, role: 'admin' as const }))
+        : (members as MemberRow[]).map((m: MemberRow) => ({
             id: m.org.id,
             name: m.org.name,
             slug: m.org.slug,
