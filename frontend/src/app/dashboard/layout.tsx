@@ -1,6 +1,7 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useState, useRef, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { Menu } from "lucide-react";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
@@ -9,6 +10,12 @@ import { RoleRouteGuard } from "@/components/dashboard/RoleRouteGuard";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0, behavior: "auto" });
+  }, [pathname]);
 
   return (
     <DashboardAuthGuard>
@@ -18,7 +25,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <header className="fixed left-0 right-0 top-0 z-40 flex h-14 shrink-0 items-center gap-3 border-b border-zinc-200 bg-white px-4 dark:border-zinc-800 dark:bg-zinc-900 md:hidden">
           <button
             type="button"
-            onClick={() => setMobileMenuOpen(true)}
+            onClick={() => {
+              if (pathname?.includes("/rep-portal/dialer")) {
+                window.dispatchEvent(new CustomEvent("dialer-reset-to-first"));
+              }
+              setMobileMenuOpen(true);
+            }}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
             aria-label="Open menu"
           >
@@ -50,7 +62,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         />
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pt-14 md:pt-0">
-          <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
+          <main ref={mainRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
             {children}
           </main>
         </div>

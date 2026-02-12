@@ -254,7 +254,7 @@ export default function RepPerformancePage() {
   //   </div>
   // );
   return (
-    <div>
+    <div className="p-4 sm:p-6 lg:p-8">
       <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
         Rep Perfomance   
       </h1>

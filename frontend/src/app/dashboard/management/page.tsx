@@ -14,7 +14,7 @@ export default function ManagementPage() {
   const showUsersTab = platformRole === "super_admin";
 
   return (
-    <div className="mx-auto w-full max-w-7xl">
+    <div className="mx-auto w-full max-w-7xl p-4 sm:p-6 lg:p-8">
       {/* Hero section - matches Campaign Command Center */}
       <section className="rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-700 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div className="mx-auto max-w-7xl">
