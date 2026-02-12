@@ -23,12 +23,14 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     try {
-      const decoded = this.jwtService.verify<{ sub: string; email?: string }>(token, {
-        secret: env.sessionSecret,
-      });
+      const decoded = this.jwtService.verify<
+        { sub: string; email?: string; platformRole?: JWTPayload['platformRole']; orgId?: string | null }
+      >(token, { secret: env.sessionSecret });
       (request as Request & { user: JWTPayload }).user = {
         sub: decoded.sub,
         email: decoded.email,
+        platformRole: decoded.platformRole,
+        orgId: decoded.orgId ?? undefined,
       };
       return true;
     } catch {

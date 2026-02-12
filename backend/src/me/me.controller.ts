@@ -1,14 +1,13 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import { SupabaseService } from '../config/supabase.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/user.decorator';
 import { JWTPayload } from '../common/types';
-import { OrgRole } from '../common/types';
 
 @Controller('me')
 @UseGuards(JwtAuthGuard)
 export class MeController {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   @Get()
   async getMe(@CurrentUser() user: JWTPayload) {
@@ -16,24 +15,52 @@ export class MeController {
     if (!userId) {
       return { user: null, orgs: [] };
     }
-    const [{ data: profile }, { data: members }] = await Promise.all([
-      this.supabase.getClient().from('profiles').select('platform_role').eq('id', userId).single(),
-      this.supabase.getClient().from('organization_members').select('org_id, role').eq('user_id', userId),
+    const [profile, members, allOrgs] = await Promise.all([
+      this.prisma.profile.findUnique({
+        where: { id: userId },
+        select: {
+          platformRole: true,
+          fullName: true,
+          avatarUrl: true,
+          organizationId: true,
+          organization: { select: { id: true, name: true, slug: true } },
+        },
+      }),
+      this.prisma.organizationMember.findMany({
+        where: { userId },
+        select: { orgId: true, role: true, org: { select: { id: true, name: true, slug: true } } },
+      }),
+      this.prisma.organization.findMany({
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true, slug: true },
+      }),
     ]);
-    const platformRole = (profile?.platform_role as string) ?? 'rep';
-    const orgIds = (members ?? []).map((m) => m.org_id);
-    let orgs: { id: string; name: string; slug: string; role: string }[] = [];
-    if (orgIds.length > 0) {
-      const { data: orgRows } = await this.supabase
-        .getClient()
-        .from('organizations')
-        .select('id, name, slug')
-        .in('id', orgIds);
-      const roleByOrg = new Map((members ?? []).map((m) => [m.org_id, m.role as OrgRole]));
-      orgs = (orgRows ?? []).map((o) => ({ ...o, role: roleByOrg.get(o.id) ?? 'member' }));
-    }
+    const platformRole = profile?.platformRole ?? 'rep';
+    const fullName = profile?.fullName ?? null;
+    const avatarUrl = profile?.avatarUrl ?? null;
+    const organizationId = profile?.organizationId ?? null;
+    const organization = profile?.organization
+      ? { id: profile.organization.id, name: profile.organization.name, slug: profile.organization.slug }
+      : null;
+    const orgs =
+      platformRole === 'super_admin'
+        ? allOrgs.map((o) => ({ id: o.id, name: o.name, slug: o.slug, role: 'admin' as const }))
+        : members.map((m) => ({
+            id: m.org.id,
+            name: m.org.name,
+            slug: m.org.slug,
+            role: m.role,
+          }));
     return {
-      user: { id: user.sub, email: user.email, platformRole },
+      user: {
+        id: user.sub,
+        email: user.email,
+        platformRole: String(platformRole),
+        fullName,
+        avatarUrl,
+        organizationId,
+        organization,
+      },
       orgs,
     };
   }

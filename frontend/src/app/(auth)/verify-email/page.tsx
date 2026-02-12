@@ -7,6 +7,7 @@ import { ShieldCheck } from "lucide-react";
 import { AuthCard } from "@/components/ui/AuthCard";
 import { Button } from "@/components/ui/Button";
 import { api, type ApiError } from "@/lib/api";
+import { getDashboardRedirectForRole } from "@/lib/roles";
 
 const CODE_LENGTH = 8;
 
@@ -69,7 +70,7 @@ function VerifyEmailContent() {
           localStorage.setItem("token", res.token);
           localStorage.setItem("user", JSON.stringify(res.user));
         }
-        router.push("/access-requested");
+        router.replace(getDashboardRedirectForRole(res.user.platformRole));
         return;
       }
     } catch (err) {

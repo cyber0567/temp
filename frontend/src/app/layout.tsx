@@ -14,8 +14,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SWP OS V1",
+  title: { default: "SWP OS V1", template: "%s | SWP OS V1" },
   description: "A Next.js starter with Tailwind CSS and TypeScript",
+  icons: {
+    icon: "/mvplogo.jpg",
+  },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({

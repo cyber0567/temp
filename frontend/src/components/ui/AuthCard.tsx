@@ -12,7 +12,7 @@ export function AuthCard({
   return (
     <Card
       className={cn(
-        "w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 shadow-lg dark:border-gray-200 dark:bg-white",
+        "w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-lg dark:border-gray-200 dark:bg-white sm:p-8",
         className
       )}
     >

@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
-import { SupabaseService } from '../../config/supabase.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { ORG_ROLES_KEY } from '../decorators/org-roles.decorator';
 import { OrgRole } from '../types';
 
@@ -16,12 +16,12 @@ import { OrgRole } from '../types';
 export class OrgRoleGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly supabase: SupabaseService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest();
-    const request = req as Request & { user?: { sub: string }; orgId?: string; orgRole?: OrgRole };
+    const request = req as Request & { user?: { sub: string; platformRole?: string; orgId?: string }; orgId?: string; orgRole?: OrgRole };
     const orgId = request.params?.orgId ?? request.body?.orgId ?? request.query?.orgId;
     if (!orgId || typeof orgId !== 'string') {
       throw new BadRequestException('Organization ID required');
@@ -29,18 +29,27 @@ export class OrgRoleGuard implements CanActivate {
     const userId = request.user?.sub;
     if (!userId) throw new UnauthorizedException('Authentication required');
 
-    const { data: member, error } = await this.supabase
-      .getClient()
-      .from('organization_members')
-      .select('role')
-      .eq('org_id', orgId)
-      .eq('user_id', userId)
-      .single();
+    const platformRole = request.user?.platformRole;
+    if (platformRole === 'super_admin') {
+      request.orgId = orgId;
+      request.orgRole = 'admin';
+      return true;
+    }
 
-    if (error || !member) {
+    // Multi-tenant: USER/ADMIN can only access their primary org
+    const userOrgId = request.user?.orgId;
+    if (userOrgId && userOrgId !== orgId) {
+      throw new ForbiddenException('You can only access your organization');
+    }
+
+    const member = await this.prisma.organizationMember.findUnique({
+      where: { orgId_userId: { orgId, userId } },
+    });
+
+    if (!member) {
       throw new ForbiddenException('Not a member of this organization');
     }
-    const role = member.role as OrgRole;
+    const role = member.role;
     const allowedRoles = this.reflector.get<OrgRole[]>(ORG_ROLES_KEY, context.getHandler()) ?? [];
     if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
       throw new ForbiddenException(`Requires one of: ${allowedRoles.join(', ')}`);

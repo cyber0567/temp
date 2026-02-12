@@ -24,15 +24,15 @@ export function Providers({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Show any alerts that fired before React mounted (queued by inline script in layout)
+    // Flush any alerts that fired before React mounted (queued by inline script in layout)
     const queue = (window as Window & { __alertQueue?: string[] }).__alertQueue;
     if (queue?.length) {
-      queue.forEach((msg) => toast(msg, { duration: 5000 }));
+      queue.forEach((msg) => toast.info(msg, { duration: 5000 }));
       (window as Window & { __alertQueue?: string[] }).__alertQueue = [];
     }
-    // From now on, alert() shows as toast
+    // Redirect window.alert to Sonner toast (top-right)
     window.alert = (message: string) => {
-      toast(message, { duration: 5000 });
+      toast.info(message, { duration: 5000 });
     };
   }, []);
 
@@ -42,9 +42,11 @@ export function Providers({ children }: { children: ReactNode }) {
         <WebSocketProvider>{children}</WebSocketProvider>
       <Toaster
         richColors
-        position="top-center"
+        position="top-right"
         closeButton
+        expand={false}
         toastOptions={{
+          duration: 5000,
           classNames: { closeButton: closeButtonPosition },
         }}
       />

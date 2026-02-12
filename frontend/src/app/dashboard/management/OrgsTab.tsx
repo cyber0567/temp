@@ -9,26 +9,39 @@ import {
   Loader2,
   Trash2,
   UserPlus,
+  Search,
 } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { api, type OrgRole, type OrgResponse } from "@/lib/api";
 import { toast } from "sonner";
 
-type Member = { user_id: string; role: OrgRole; created_at: string };
+type Member = {
+  user_id: string;
+  email: string | null;
+  full_name: string | null;
+  role: OrgRole;
+  created_at: string;
+};
+
+function memberDisplayName(m: Member): string {
+  return (m.full_name?.trim() || m.email?.trim() || m.user_id) ?? m.user_id;
+}
 
 export function OrgsTab() {
-  const { orgs, refetch } = useUser();
+  const { orgs, refetch, platformRole } = useUser();
   const [loading, setLoading] = useState(true);
   const [selectedOrg, setSelectedOrg] = useState<OrgResponse | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [newOrgName, setNewOrgName] = useState("");
   const [creating, setCreating] = useState(false);
-  const [addUserId, setAddUserId] = useState("");
+  const [addEmail, setAddEmail] = useState("");
   const [addRole, setAddRole] = useState<OrgRole>("member");
   const [adding, setAdding] = useState(false);
+  const [memberSearch, setMemberSearch] = useState("");
   const [updating, setUpdating] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     refetch().finally(() => setLoading(false));
@@ -66,11 +79,11 @@ export function OrgsTab() {
 
   async function handleAddMember(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedOrg || !addUserId.trim()) return;
+    if (!selectedOrg || !addEmail.trim()) return;
     setAdding(true);
     try {
-      await api.addOrgMember(selectedOrg.id, addUserId.trim(), addRole);
-      setAddUserId("");
+      await api.addOrgMember(selectedOrg.id, addEmail.trim(), addRole, { byEmail: true });
+      setAddEmail("");
       const { members: m } = await api.getOrgMembers(selectedOrg.id);
       setMembers(m);
       toast.success("Member added");
@@ -109,9 +122,28 @@ export function OrgsTab() {
     }
   }
 
+  async function handleDeleteOrg() {
+    if (!selectedOrg) return;
+    if (!confirm(`Delete organization "${selectedOrg.name}"? This cannot be undone. All members will be removed and org data deleted.`)) return;
+    setDeleting(true);
+    try {
+      await api.deleteOrg(selectedOrg.id);
+      setSelectedOrg(null);
+      setMembers([]);
+      await refetch();
+      toast.success("Organization deleted");
+    } catch (err: unknown) {
+      toast.error((err as { message?: string })?.message ?? "Failed to delete organization");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  const canDeleteOrg = selectedOrg && (selectedOrg.role === "admin" || platformRole === "super_admin");
+
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
-      <div className="space-y-4 lg:col-span-1">
+    <div className="grid min-w-0 gap-6 lg:grid-cols-3">
+      <div className="min-w-0 space-y-4 lg:col-span-1">
         <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
           <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
             <Building2 className="h-5 w-5 text-violet-500" />
@@ -150,18 +182,18 @@ export function OrgsTab() {
         </div>
         <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
           <h2 className="mb-4 text-base font-semibold text-zinc-900 dark:text-zinc-50">Create Organization</h2>
-          <form onSubmit={handleCreateOrg} className="flex gap-2">
+          <form onSubmit={handleCreateOrg} className="flex flex-wrap gap-2">
             <input
               type="text"
               value={newOrgName}
               onChange={(e) => setNewOrgName(e.target.value)}
               placeholder="Organization name"
-              className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+              className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 sm:min-w-[12rem]"
             />
             <button
               type="submit"
               disabled={creating || !newOrgName.trim()}
-              className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-violet-700 disabled:opacity-50"
+              className="flex shrink-0 items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-violet-700 disabled:opacity-50"
             >
               {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               Create
@@ -169,35 +201,48 @@ export function OrgsTab() {
           </form>
         </div>
       </div>
-      <div className="lg:col-span-2">
+      <div className="min-w-0 lg:col-span-2">
         {selectedOrg ? (
           <div className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-            <div className="border-b border-zinc-200 px-6 py-4 dark:border-zinc-700">
-              <h2 className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                <Users className="h-5 w-5 text-violet-500" />
-                {selectedOrg.name} — Members
-              </h2>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                {selectedOrg.role === "admin" ? "You can manage members" : "View only (admin can manage)"}
-              </p>
+            <div className="flex flex-col gap-2 border-b border-zinc-200 px-6 py-4 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                  <Users className="h-5 w-5 text-violet-500" />
+                  {selectedOrg.name} — Members
+                </h2>
+                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                  {selectedOrg.role === "admin" ? "You can manage members" : "View only (admin can manage)"}
+                </p>
+              </div>
+              {canDeleteOrg && (
+                <button
+                  type="button"
+                  onClick={handleDeleteOrg}
+                  disabled={deleting}
+                  className="flex shrink-0 items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:bg-transparent dark:text-red-400 dark:hover:bg-red-950/30"
+                >
+                  {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  Delete organization
+                </button>
+              )}
             </div>
             <div className="p-6">
               {selectedOrg.role !== "admin" ? (
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">Contact an organization admin to manage members.</p>
               ) : (
                 <>
-                  <form onSubmit={handleAddMember} className="mb-6 flex flex-wrap gap-2">
+                  <form onSubmit={handleAddMember} className="mb-4 flex flex-wrap items-center gap-2">
                     <input
-                      type="text"
-                      value={addUserId}
-                      onChange={(e) => setAddUserId(e.target.value)}
-                      placeholder="User ID"
-                      className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                      type="email"
+                      value={addEmail}
+                      onChange={(e) => setAddEmail(e.target.value)}
+                      placeholder="User email"
+                      className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 sm:min-w-[10rem]"
                     />
                     <select
                       value={addRole}
                       onChange={(e) => setAddRole(e.target.value as OrgRole)}
-                      className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                      className="shrink-0 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
                     >
                       <option value="admin">Admin</option>
                       <option value="member">Member</option>
@@ -205,20 +250,42 @@ export function OrgsTab() {
                     </select>
                     <button
                       type="submit"
-                      disabled={adding || !addUserId.trim()}
-                      className="flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+                      disabled={adding || !addEmail.trim()}
+                      className="flex shrink-0 items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
                     >
                       {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
                       Add
                     </button>
                   </form>
+                  {members.length > 0 && (
+                    <div className="mb-4 flex items-center gap-2">
+                      <Search className="h-4 w-4 text-zinc-400" />
+                      <input
+                        type="text"
+                        value={memberSearch}
+                        onChange={(e) => setMemberSearch(e.target.value)}
+                        placeholder="Search by name or email…"
+                        className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                      />
+                    </div>
+                  )}
                   {membersLoading ? (
                     <div className="flex justify-center py-12">
                       <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
                     </div>
                   ) : members.length === 0 ? (
                     <p className="py-8 text-center text-sm text-zinc-500">No members yet.</p>
-                  ) : (
+                  ) : (() => {
+                    const q = memberSearch.trim().toLowerCase();
+                    const filtered = q
+                      ? members.filter(
+                          (m) =>
+                            (m.full_name?.toLowerCase().includes(q) ||
+                              m.email?.toLowerCase().includes(q) ||
+                              m.user_id.toLowerCase().includes(q))
+                        )
+                      : members;
+                    return (
                     <div className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700">
                       <table className="min-w-full">
                         <thead>
@@ -229,10 +296,20 @@ export function OrgsTab() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
-                          {members.map((m) => (
+                          {filtered.length === 0 ? (
+                            <tr>
+                              <td colSpan={3} className="px-4 py-8 text-center text-sm text-zinc-500">
+                                No members match &quot;{memberSearch}&quot;
+                              </td>
+                            </tr>
+                          ) : (
+                          filtered.map((m) => (
                             <tr key={m.user_id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                               <td className="px-4 py-3">
-                                <p className="font-mono text-sm text-zinc-900 dark:text-zinc-100">{m.user_id}</p>
+                                <p className="font-medium text-zinc-900 dark:text-zinc-100">{memberDisplayName(m)}</p>
+                                {(m.email || m.full_name) && (
+                                  <p className="font-mono text-xs text-zinc-500 dark:text-zinc-400">{m.email ?? m.user_id}</p>
+                                )}
                                 <p className="text-xs text-zinc-500 dark:text-zinc-400">Joined {new Date(m.created_at).toLocaleDateString()}</p>
                               </td>
                               <td className="px-4 py-3">
@@ -259,11 +336,12 @@ export function OrgsTab() {
                                 </button>
                               </td>
                             </tr>
-                          ))}
+                          )))}
                         </tbody>
                       </table>
                     </div>
-                  )}
+                    );
+                  })()}
                 </>
               )}
             </div>
