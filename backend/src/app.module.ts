@@ -10,6 +10,7 @@ import { SuperAdminModule } from './super-admin/super-admin.module';
 import { WsModule } from './ws/ws.module';
 import { SettingsModule } from './settings/settings.module';
 import { EmailModule } from './email/email.module';
+import { IntegrationsModule } from './integrations/integrations.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { EmailModule } from './email/email.module';
     SuperAdminModule,
     WsModule,
     SettingsModule,
+    IntegrationsModule,
   ],
 })
 export class AppModule {}
