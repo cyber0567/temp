@@ -84,4 +84,6 @@ Node.js backend with **NestJS**, TypeScript, WebSocket (ws), and **Supabase (hos
 
 Supabase (hosted PostgreSQL). **Migrations are managed by Prisma** (`prisma/schema.prisma` and `prisma/migrations/`). Tables: `users`, `profiles`, `organizations`, `organization_members`, `ringcentral_tokens`. Verify with `GET /db-check`.
 
+**User roles and orgs** are read and written only through **Prisma** (not the Supabase client). So platform role (`profiles.platform_role`) and org membership (`organization_members`) stay in sync with the schema. Run `npx prisma migrate deploy` (or `npm run db:migrate:deploy`) once so the tables exist; after that you do not need to change the database schema for roles and orgs.
+
 **If you already applied the old SQL migrations** (001–009) and want to switch to Prisma: run `npx prisma migrate resolve --applied 20250211000000_init` once (with `DATABASE_URL` set) so Prisma marks the initial migration as applied; then use Prisma for future changes.

@@ -14,9 +14,9 @@ export default function ManagementPage() {
   const showUsersTab = platformRole === "super_admin";
 
   return (
-    <>
+    <div className="mx-auto w-full max-w-7xl">
       {/* Hero section - matches Campaign Command Center */}
-      <section className="bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-700 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <section className="rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-700 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3 min-w-0">
@@ -35,11 +35,11 @@ export default function ManagementPage() {
       </section>
 
       {/* Content section */}
-      <section className="flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-        <div className="mx-auto max-w-7xl">
+      <section className="flex-1 py-6 sm:py-8">
+        <div className="mx-auto w-full">
           {/* Tabs - matches dashboard style */}
           <div className="border-b border-zinc-200 dark:border-zinc-700">
-            <nav className="-mb-px flex gap-8" aria-label="Tabs">
+            <nav className="-mb-px flex flex-wrap gap-x-6 gap-y-2 sm:gap-x-8" aria-label="Tabs">
               <button
                 type="button"
                 onClick={() => setTab("orgs")}
@@ -86,6 +86,6 @@ export default function ManagementPage() {
           </div>
         </div>
       </section>
-    </>
+    </div>
   );
 }

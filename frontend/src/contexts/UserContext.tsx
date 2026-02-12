@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { api, type MeResponse, type PlatformRole } from "@/lib/api";
+import { api, getToken, type MeResponse, type PlatformRole } from "@/lib/api";
 
 type UserContextValue = {
   user: MeResponse["user"];
@@ -29,6 +29,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refetch = useCallback(async () => {
+    const token = await getToken();
+    if (!token) {
+      setData({ user: null, orgs: [] });
+      setLoading(false);
+      return;
+    }
     try {
       const res = await api.getMe();
       setData(res);
@@ -41,6 +47,17 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refetch();
+  }, [refetch]);
+
+  // Refetch when window gains focus so role changes (e.g. by Super Admin) are reflected
+  useEffect(() => {
+    function onFocus() {
+      refetch();
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("focus", onFocus);
+      return () => window.removeEventListener("focus", onFocus);
+    }
   }, [refetch]);
 
   const value = useMemo<UserContextValue>(

@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { useUser } from "@/contexts/UserContext";
 import { api, type SettingsResponse } from "@/lib/api";
+import { getPlatformRoleLabel } from "@/lib/roles";
 import { toast } from "sonner";
 
 const settingTabs = [
@@ -88,8 +89,8 @@ export default function SettingsPage() {
   const [currency, setCurrency] = useState("USD");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [orgName, setOrgName] = useState("");
-  const [industry, setIndustry] = useState("");
-  const [companySize, setCompanySize] = useState("");
+  const [industry, setIndustry] = useState("Technology");
+  const [companySize, setCompanySize] = useState("1-10 employees");
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [flaggedCalls, setFlaggedCalls] = useState(true);
   const [dailyDigest, setDailyDigest] = useState(false);
@@ -110,8 +111,8 @@ export default function SettingsPage() {
     setCurrency(data.profile.currency ?? "USD");
     if (data.organization) {
       setOrgName(data.organization.name);
-      setIndustry(data.organization.industry || "");
-      setCompanySize(data.organization.companySize || "");
+      setIndustry(data.organization.industry || "Technology");
+      setCompanySize(data.organization.companySize || "1-10 employees");
     }
     setEmailAlerts(data.notifications.emailAlerts);
     setFlaggedCalls(data.notifications.flaggedCalls);
@@ -127,19 +128,46 @@ export default function SettingsPage() {
       setAutoApproveThreshold(data.quality.autoApproveThreshold);
       setEnableEscalation(data.quality.enableEscalation);
     }
-    setOrgId(data.orgId);
+    setOrgId(data.orgId ?? data.organization?.id ?? null);
   }
 
+  const primaryOrgId = user?.organizationId ?? orgs?.[0]?.id;
+  const isOrgAdminForCurrentOrg =
+    user?.platformRole === "super_admin" || (orgId ? orgs?.find((o) => o.id === orgId)?.role === "admin" : false);
+
   useEffect(() => {
-    const firstOrgId = orgs?.[0]?.id;
     api
-      .getSettings(firstOrgId)
+      .getSettings(primaryOrgId ?? undefined)
       .then(applySettings)
       .catch((err) => {
         toast.error(err?.message ?? "Failed to load settings");
       })
       .finally(() => setLoading(false));
-  }, [orgs?.[0]?.id]);
+  }, [primaryOrgId]);
+
+  async function switchOrganization(newOrgId: string) {
+    try {
+      const data = await api.getSettings(newOrgId);
+      setOrgId(data.orgId ?? data.organization?.id ?? null);
+      if (data.organization) {
+        setOrgName(data.organization.name);
+        setIndustry(data.organization.industry || "Technology");
+        setCompanySize(data.organization.companySize || "1-10 employees");
+      }
+      if (data.compliance) {
+        setAutoReview(data.compliance.autoReview);
+        setRequireDisclosure(data.compliance.requireDisclosure);
+        setAutoFlagThreshold(data.compliance.autoFlagThreshold);
+      }
+      if (data.quality) {
+        setMinQaScore(data.quality.minQaScore);
+        setAutoApproveThreshold(data.quality.autoApproveThreshold);
+        setEnableEscalation(data.quality.enableEscalation);
+      }
+    } catch (err) {
+      toast.error(err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Failed to load organization");
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -157,7 +185,7 @@ export default function SettingsPage() {
           dailyDigest,
           weeklyReport,
         },
-        ...(orgId && {
+        ...(orgId && isOrgAdminForCurrentOrg && {
           organization: { orgId, name: orgName || undefined, industry: industry || undefined, companySize: companySize || undefined },
           compliance: { autoReview, requireDisclosure, autoFlagThreshold },
           quality: { minQaScore, autoApproveThreshold, enableEscalation },
@@ -303,7 +331,7 @@ export default function SettingsPage() {
                 <label className="text-sm font-medium text-gray-700 dark:text-zinc-700">Role</label>
                 <input
                   type="text"
-                  value={user?.platformRole?.replace(/_/g, " ") ?? "—"}
+                  value={getPlatformRoleLabel(user?.platformRole) ?? "—"}
                   readOnly
                   className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-600 dark:border-zinc-200 dark:bg-zinc-50 dark:text-zinc-600"
                 />
@@ -338,47 +366,76 @@ export default function SettingsPage() {
       )}
 
       {activeTab === "organization" && (
-        <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-zinc-200 dark:bg-white sm:p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-zinc-900">Organization Settings</h2>
-          <p className="mt-0.5 text-sm text-gray-500">
-            Configure your organization details (admin only)
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-zinc-200 dark:bg-zinc-900 sm:p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">Organization Settings</h2>
+          <p className="mt-0.5 text-sm text-gray-500 dark:text-zinc-400">
+            Configure your organization details
           </p>
-          {!orgId ? (
-            <p className="mt-4 text-sm text-gray-500">You are not in any organization yet.</p>
+          {!orgId && (!orgs?.length || orgs.length === 0) ? (
+            <p className="mt-4 text-sm text-gray-500 dark:text-zinc-400">You are not in any organization yet.</p>
           ) : (
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div className="mt-6 space-y-6">
+              {!isOrgAdminForCurrentOrg && (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                  Only organization admins can edit these settings. Your profile and notifications are still saved when you click Save.
+                </p>
+              )}
+              {orgs && orgs.length > 1 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">Organization</label>
+                  <select
+                    value={orgId ?? ""}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      if (id) switchOrganization(id);
+                    }}
+                    className="mt-1 w-full appearance-none rounded-lg border border-gray-300 bg-white px-3 py-2 pr-9 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                  >
+                    <option value="">Select organization…</option>
+                    {orgs.map((org) => (
+                      <option key={org.id} value={org.id}>{org.name}</option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">Switch which organization to view and edit</p>
+                </div>
+              )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-700">Organization Name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">Organization Name</label>
                 <input
                   type="text"
                   value={orgName}
                   onChange={(e) => setOrgName(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 dark:border-zinc-300 dark:bg-white dark:text-zinc-900"
+                  placeholder="e.g. SalesOS Enterprise"
+                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-700">Industry</label>
-                <select
-                  value={industry}
-                  onChange={(e) => setIndustry(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 dark:border-zinc-300 dark:bg-white dark:text-zinc-900"
-                >
-                  {INDUSTRIES.map((i) => (
-                    <option key={i} value={i}>{i}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-700">Company Size</label>
-                <select
-                  value={companySize}
-                  onChange={(e) => setCompanySize(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 dark:border-zinc-300 dark:bg-white dark:text-zinc-900"
-                >
-                  {COMPANY_SIZES.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">Industry</label>
+                  <select
+                    value={industry}
+                    onChange={(e) => setIndustry(e.target.value)}
+                    className="mt-1 w-full appearance-none rounded-lg border border-gray-300 bg-white px-3 py-2 pr-9 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                  >
+                    <option value="">Select industry</option>
+                    {INDUSTRIES.map((i) => (
+                      <option key={i} value={i}>{i}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">Company Size</label>
+                  <select
+                    value={companySize}
+                    onChange={(e) => setCompanySize(e.target.value)}
+                    className="mt-1 w-full appearance-none rounded-lg border border-gray-300 bg-white px-3 py-2 pr-9 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                  >
+                    <option value="">Select size</option>
+                    {COMPANY_SIZES.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           )}
@@ -423,7 +480,13 @@ export default function SettingsPage() {
           {!orgId ? (
             <p className="mt-4 text-sm text-gray-500">Organization required.</p>
           ) : (
-            <ul className="mt-6 space-y-4">
+            <>
+              {!isOrgAdminForCurrentOrg && (
+                <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                  Only organization admins can edit these settings.
+                </p>
+              )}
+              <ul className="mt-6 space-y-4">
               <li className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 dark:border-zinc-200 dark:bg-white">
                 <div>
                   <p className="font-medium text-gray-900 dark:text-zinc-900">Automatic Compliance Review</p>
@@ -450,6 +513,7 @@ export default function SettingsPage() {
                 <input type="number" min={0} max={100} value={autoFlagThreshold} onChange={(e) => setAutoFlagThreshold(parseInt(e.target.value, 10) || 0)} className="w-20 rounded-lg border border-gray-300 bg-white px-3 py-2 text-center text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 dark:border-zinc-300 dark:bg-white dark:text-zinc-900" />
               </li>
             </ul>
+            </>
           )}
         </div>
       )}
@@ -461,7 +525,13 @@ export default function SettingsPage() {
           {!orgId ? (
             <p className="mt-4 text-sm text-gray-500">Organization required.</p>
           ) : (
-            <ul className="mt-6 space-y-4">
+            <>
+              {!isOrgAdminForCurrentOrg && (
+                <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                  Only organization admins can edit these settings.
+                </p>
+              )}
+              <ul className="mt-6 space-y-4">
               <li className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 dark:border-zinc-200 dark:bg-white">
                 <div>
                   <p className="font-medium text-gray-900 dark:text-zinc-900">Minimum QA Score</p>
@@ -486,6 +556,7 @@ export default function SettingsPage() {
                 </button>
               </li>
             </ul>
+            </>
           )}
         </div>
       )}

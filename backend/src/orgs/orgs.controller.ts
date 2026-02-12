@@ -12,7 +12,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { SupabaseService } from '../config/supabase.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { OrgRoleGuard } from '../common/guards/org-role.guard';
 import { CurrentUser } from '../common/decorators/user.decorator';
@@ -23,29 +23,18 @@ import { OrgRole } from '../common/types';
 @Controller('orgs')
 @UseGuards(JwtAuthGuard)
 export class OrgsController {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   @Get()
   async list(@CurrentUser() user: JWTPayload) {
     const userId = user?.sub;
     if (!userId) return { orgs: [] };
-    const { data: members, error: membersError } = await this.supabase
-      .getClient()
-      .from('organization_members')
-      .select('org_id, role')
-      .eq('user_id', userId);
-    if (membersError) throw new BadRequestException(membersError.message);
-    const orgIds = (members ?? []).map((m) => m.org_id);
-    if (orgIds.length === 0) return { orgs: [] };
-    const { data: orgs, error: orgsError } = await this.supabase
-      .getClient()
-      .from('organizations')
-      .select('id, name, slug')
-      .in('id', orgIds);
-    if (orgsError) throw new BadRequestException(orgsError.message);
-    const roleByOrg = new Map((members ?? []).map((m) => [m.org_id, m.role as OrgRole]));
+    const members = await this.prisma.organizationMember.findMany({
+      where: { userId },
+      select: { orgId: true, role: true, org: { select: { id: true, name: true, slug: true } } },
+    });
     return {
-      orgs: (orgs ?? []).map((o) => ({ ...o, role: roleByOrg.get(o.id) })),
+      orgs: members.map((m) => ({ id: m.org.id, name: m.org.name, slug: m.org.slug, role: m.role })),
     };
   }
 
@@ -59,35 +48,49 @@ export class OrgsController {
     }
     const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     if (!slug) throw new BadRequestException('Invalid organization name');
-    const { data: org, error: orgError } = await this.supabase
-      .getClient()
-      .from('organizations')
-      .insert({ name, slug })
-      .select('id, name, slug')
-      .single();
-    if (orgError) {
-      if (orgError.code === '23505') throw new BadRequestException('Organization slug already exists');
-      throw new BadRequestException(orgError.message);
+    try {
+      const [org] = await this.prisma.$transaction([
+        this.prisma.organization.create({ data: { name, slug }, select: { id: true, name: true, slug: true } }),
+      ]);
+      await this.prisma.organizationMember.create({
+        data: { orgId: org.id, userId, role: 'admin' },
+      });
+      return { org: { ...org, role: 'admin' as OrgRole } };
+    } catch (e: unknown) {
+      const err = e as { code?: string };
+      if (err.code === 'P2002') throw new BadRequestException('Organization slug already exists');
+      throw new BadRequestException(err instanceof Error ? err.message : 'Failed to create organization');
     }
-    const { error: memberError } = await this.supabase
-      .getClient()
-      .from('organization_members')
-      .insert({ org_id: org.id, user_id: userId, role: 'admin' });
-    if (memberError) throw new BadRequestException(memberError.message);
-    return { org: { ...org, role: 'admin' as OrgRole } };
   }
 
   @Get(':orgId/members')
   @UseGuards(OrgRoleGuard)
   @OrgRoles('admin')
   async listMembers(@Param('orgId') orgId: string) {
-    const { data, error } = await this.supabase
-      .getClient()
-      .from('organization_members')
-      .select('user_id, role, created_at')
-      .eq('org_id', orgId);
-    if (error) throw new BadRequestException(error.message);
-    return { members: data ?? [] };
+    const members = await this.prisma.organizationMember.findMany({
+      where: { orgId },
+      select: { userId: true, role: true, createdAt: true },
+    });
+    const userIds = members.map((m) => m.userId);
+    const profiles = userIds.length
+      ? await this.prisma.profile.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, email: true, fullName: true },
+        })
+      : [];
+    const profileByUserId = new Map(profiles.map((p) => [p.id, p]));
+    return {
+      members: members.map((m) => {
+        const profile = profileByUserId.get(m.userId);
+        return {
+          user_id: m.userId,
+          email: profile?.email ?? null,
+          full_name: profile?.fullName ?? null,
+          role: m.role,
+          created_at: m.createdAt.toISOString(),
+        };
+      }),
+    };
   }
 
   @Post(':orgId/members')
@@ -96,25 +99,36 @@ export class OrgsController {
   @HttpCode(HttpStatus.CREATED)
   async addMember(
     @Param('orgId') orgId: string,
-    @Body('userId') userId: string,
+    @Body('userId') userId: string | undefined,
+    @Body('email') email: string | undefined,
     @Body('role') role: OrgRole | undefined,
   ) {
-    if (!userId || typeof userId !== 'string') {
-      throw new BadRequestException('userId is required');
+    let resolvedUserId = (userId ?? '').trim();
+    if (!resolvedUserId && (email ?? '').trim()) {
+      const normalizedEmail = (email as string).trim().toLowerCase();
+      const user = await this.prisma.user.findUnique({
+        where: { email: normalizedEmail },
+        select: { id: true },
+      });
+      if (!user) throw new BadRequestException('No user found with this email');
+      resolvedUserId = user.id;
+    }
+    if (!resolvedUserId) {
+      throw new BadRequestException('userId or email is required');
     }
     const validRoles: OrgRole[] = ['admin', 'member', 'viewer'];
     const r = role && validRoles.includes(role) ? role : 'member';
-    const { data, error } = await this.supabase
-      .getClient()
-      .from('organization_members')
-      .insert({ org_id: orgId, user_id: userId, role: r })
-      .select()
-      .single();
-    if (error) {
-      if (error.code === '23505') throw new BadRequestException('User is already a member');
-      throw new BadRequestException(error.message);
+    try {
+      const member = await this.prisma.organizationMember.create({
+        data: { orgId, userId: resolvedUserId, role: r },
+        select: { userId: true, role: true },
+      });
+      return { member: { user_id: member.userId, role: member.role } };
+    } catch (e: unknown) {
+      const err = e as { code?: string };
+      if (err.code === 'P2002') throw new BadRequestException('User is already a member');
+      throw new BadRequestException(err instanceof Error ? err.message : 'Failed to add member');
     }
-    return { member: data };
   }
 
   @Patch(':orgId/members/:userId')
@@ -129,13 +143,10 @@ export class OrgsController {
     if (!role || !validRoles.includes(role)) {
       throw new BadRequestException('Valid role (admin, member, viewer) is required');
     }
-    const { error } = await this.supabase
-      .getClient()
-      .from('organization_members')
-      .update({ role })
-      .eq('org_id', orgId)
-      .eq('user_id', userId);
-    if (error) throw new BadRequestException(error.message);
+    await this.prisma.organizationMember.updateMany({
+      where: { orgId, userId },
+      data: { role },
+    });
     return { ok: true };
   }
 
@@ -149,24 +160,33 @@ export class OrgsController {
     if (!currentUserId) throw new ForbiddenException('Authentication required');
     const isSelf = targetUserId === currentUserId;
     if (!isSelf) {
-      const { data: member } = await this.supabase
-        .getClient()
-        .from('organization_members')
-        .select('role')
-        .eq('org_id', orgId)
-        .eq('user_id', currentUserId)
-        .single();
-      if (!member || (member.role as string) !== 'admin') {
+      const member = await this.prisma.organizationMember.findUnique({
+        where: { orgId_userId: { orgId, userId: currentUserId } },
+      });
+      if (!member || member.role !== 'admin') {
         throw new ForbiddenException('Only admins can remove other members');
       }
     }
-    const { error } = await this.supabase
-      .getClient()
-      .from('organization_members')
-      .delete()
-      .eq('org_id', orgId)
-      .eq('user_id', targetUserId);
-    if (error) throw new BadRequestException(error.message);
+    await this.prisma.organizationMember.deleteMany({
+      where: { orgId, userId: targetUserId },
+    });
+    return { ok: true };
+  }
+
+  @Delete(':orgId')
+  async deleteOrg(@CurrentUser() user: JWTPayload, @Param('orgId') orgId: string) {
+    const userId = user?.sub;
+    if (!userId) throw new ForbiddenException('Authentication required');
+    const isSuperAdmin = user.platformRole === 'super_admin';
+    if (!isSuperAdmin) {
+      const member = await this.prisma.organizationMember.findUnique({
+        where: { orgId_userId: { orgId, userId } },
+      });
+      if (!member || member.role !== 'admin') {
+        throw new ForbiddenException('Only org admins or Super Admin can delete an organization');
+      }
+    }
+    await this.prisma.organization.delete({ where: { id: orgId } });
     return { ok: true };
   }
 }

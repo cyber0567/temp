@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { SupabaseService } from '../../config/supabase.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { PLATFORM_ROLES_KEY } from '../decorators/platform-roles.decorator';
 import { JWTPayload, PlatformRole } from '../types';
 
@@ -21,7 +21,7 @@ function hasRole(userRole: PlatformRole | null | undefined, required: PlatformRo
 export class PlatformRoleGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly supabase: SupabaseService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -31,17 +31,22 @@ export class PlatformRoleGuard implements CanActivate {
     if (!platformRole) {
       const userId = request.user?.sub;
       if (!userId) throw new UnauthorizedException('Authentication required');
-      const { data: profile } = await this.supabase
-        .getClient()
-        .from('profiles')
-        .select('platform_role')
-        .eq('id', userId)
-        .single();
-      platformRole = (profile?.platform_role as PlatformRole) ?? 'rep';
-      if (request.user) request.user.platformRole = platformRole;
+      const profile = await this.prisma.profile.findUnique({
+        where: { id: userId },
+        select: { platformRole: true, organizationId: true },
+      });
+      platformRole = profile?.platformRole ?? 'rep';
+      if (request.user) {
+        request.user.platformRole = platformRole;
+        if (profile?.organizationId !== undefined) request.user.orgId = profile.organizationId ?? undefined;
+      }
     }
 
-    const allowedRoles = this.reflector.get<PlatformRole[]>(PLATFORM_ROLES_KEY, context.getHandler()) ?? [];
+    const allowedRoles =
+      this.reflector.getAllAndOverride<PlatformRole[]>(PLATFORM_ROLES_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]) ?? [];
     const ok = allowedRoles.length === 0 || allowedRoles.some((r) => hasRole(platformRole, r));
     if (!ok) {
       throw new ForbiddenException({

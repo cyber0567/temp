@@ -133,6 +133,21 @@ export class AuthController {
     );
   }
 
+  @Post('accept-invite')
+  async acceptInvite(
+    @Body('token') token: string,
+    @Body('password') password: string,
+    @Res() res: Response,
+  ) {
+    if (!token) {
+      return res.status(400).json({ error: 'Invitation token is required' });
+    }
+    const result = await this.authService.acceptInvite(token, password);
+    return res.status(result.status as number).json(
+      'error' in result ? { error: result.error } : { token: result.token, user: result.user },
+    );
+  }
+
   @Get('google/redirect-uri')
   getGoogleRedirectUri() {
     const redirectUri =
@@ -156,13 +171,20 @@ export class AuthController {
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  googleCallback(@Req() req: Request & { user: PassportUser }, @Res() res: Response) {
+  async googleCallback(@Req() req: Request & { user: PassportUser }, @Res() res: Response) {
     const user = req.user;
+    const deactivated = await this.authService.getDeactivatedError(user.id);
+    if (deactivated) {
+      return res.redirect(
+        `${env.frontendUrl}/login?error=${encodeURIComponent(deactivated.error)}`,
+      );
+    }
     const token = this.jwtService.sign(
       { sub: user.id, email: user.email },
       { secret: env.sessionSecret, expiresIn: '7d' },
     );
-    const userJson = encodeURIComponent(JSON.stringify({ id: user.id, email: user.email }));
+    const redirectUser = await this.authService.getOAuthRedirectUser(user.id, user.email);
+    const userJson = encodeURIComponent(JSON.stringify(redirectUser));
     res.redirect(`${env.frontendUrl}/auth/callback?token=${encodeURIComponent(token)}&user=${userJson}`);
   }
 

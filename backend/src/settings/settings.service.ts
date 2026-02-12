@@ -1,39 +1,62 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { SupabaseService } from '../config/supabase.service';
 import { JWTPayload } from '../common/types';
-import { OrgRole } from '../common/types';
 
 @Injectable()
 export class SettingsService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly supabase: SupabaseService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  /** Get user's first org id (from Supabase) for org-scoped settings. */
+  /** Get user's primary org id (profile.organizationId) for multi-tenant isolation. */
+  private async getPrimaryOrgId(userId: string): Promise<string | null> {
+    const profile = await this.prisma.profile.findUnique({
+      where: { id: userId },
+      select: { organizationId: true },
+    });
+    return profile?.organizationId ?? null;
+  }
+
+  /** Resolve org for request: SUPER_ADMIN can use any org; USER/ADMIN only their primary org. */
+  async resolveOrgId(user: JWTPayload, requestedOrgId?: string): Promise<string | null> {
+    const userId = user?.sub;
+    if (!userId) return null;
+    const isSuperAdmin = user.platformRole === 'super_admin';
+    if (isSuperAdmin) {
+      return requestedOrgId ?? (await this.getPrimaryOrgId(userId)) ?? (await this.getDefaultOrgId(userId));
+    }
+    const primary = user.orgId ?? (await this.getPrimaryOrgId(userId));
+    if (requestedOrgId && requestedOrgId !== primary) {
+      throw new ForbiddenException('You can only access your organization');
+    }
+    return primary ?? null;
+  }
+
+  /** Get user's first org id for org-scoped settings (fallback when no primary). */
   private async getDefaultOrgId(userId: string): Promise<string | null> {
-    const { data } = await this.supabase
-      .getClient()
-      .from('organization_members')
-      .select('org_id')
-      .eq('user_id', userId)
-      .limit(1);
-    return data?.[0]?.org_id ?? null;
+    const first = await this.prisma.organizationMember.findFirst({
+      where: { userId },
+      select: { orgId: true },
+    });
+    return first?.orgId ?? null;
   }
 
   /** Ensure user is admin of the org. */
   private async ensureOrgAdmin(userId: string, orgId: string): Promise<void> {
-    const { data } = await this.supabase
-      .getClient()
-      .from('organization_members')
-      .select('role')
-      .eq('org_id', orgId)
-      .eq('user_id', userId)
-      .single();
-    if (!data || (data.role as OrgRole) !== 'admin') {
+    const member = await this.prisma.organizationMember.findUnique({
+      where: { orgId_userId: { orgId, userId } },
+    });
+    if (!member || member.role !== 'admin') {
       throw new ForbiddenException('Only org admins can update organization settings');
     }
+  }
+
+  /** Check if user is org admin (or super_admin). Used to skip org update without throwing. */
+  private async isOrgAdmin(user: JWTPayload, userId: string, orgId: string): Promise<boolean> {
+    if (user.platformRole === 'super_admin') return true;
+    const member = await this.prisma.organizationMember.findUnique({
+      where: { orgId_userId: { orgId, userId } },
+      select: { role: true },
+    });
+    return member?.role === 'admin';
   }
 
   async getProfile(userId: string) {
@@ -74,8 +97,10 @@ export class SettingsService {
     return this.getProfile(userId);
   }
 
-  async getOrganization(userId: string, orgId?: string) {
-    const oid = orgId ?? (await this.getDefaultOrgId(userId));
+  async getOrganization(userId: string, orgId?: string, user?: JWTPayload) {
+    const oid = user
+      ? (await this.resolveOrgId(user, orgId)) ?? (await this.getDefaultOrgId(userId))
+      : (orgId ?? (await this.getDefaultOrgId(userId)));
     if (!oid) return { organization: null, compliance: null, quality: null };
 
     const org = await this.prisma.organization.findUnique({
@@ -226,7 +251,7 @@ export class SettingsService {
     const userId = user?.sub;
     if (!userId) throw new ForbiddenException('Authentication required');
 
-    const oid = orgId ?? (await this.getDefaultOrgId(userId));
+    const oid = await this.resolveOrgId(user, orgId) ?? (await this.getDefaultOrgId(userId));
     const [profile, notifications, orgData] = await Promise.all([
       this.getProfile(userId),
       this.getNotifications(userId),
@@ -260,17 +285,22 @@ export class SettingsService {
     if (payload.profile) await this.updateProfile(userId, payload.profile);
     if (payload.notifications) await this.updateNotifications(userId, payload.notifications);
 
-    const orgId = payload.organization?.orgId;
+    const requestedOrgId = payload.organization?.orgId;
+    const orgId = requestedOrgId ? await this.resolveOrgId(user, requestedOrgId) : null;
     if (orgId && (payload.organization || payload.compliance || payload.quality)) {
-      await this.updateOrganization(userId, orgId, {
-        name: payload.organization?.name,
-        industry: payload.organization?.industry,
-        companySize: payload.organization?.companySize,
-        compliance: payload.compliance,
-        quality: payload.quality,
-      });
+      const canUpdateOrg = await this.isOrgAdmin(user, userId, orgId);
+      if (canUpdateOrg) {
+        await this.updateOrganization(userId, orgId, {
+          name: payload.organization?.name,
+          industry: payload.organization?.industry,
+          companySize: payload.organization?.companySize,
+          compliance: payload.compliance,
+          quality: payload.quality,
+        });
+      }
+      // If not org admin, skip org update; profile and notifications are already saved
     }
 
-    return this.getAll(user, orgId);
+    return this.getAll(user, orgId ?? undefined);
   }
 }

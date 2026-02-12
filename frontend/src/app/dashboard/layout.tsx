@@ -5,13 +5,15 @@ import Image from "next/image";
 import { Menu } from "lucide-react";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { DashboardAuthGuard } from "@/components/dashboard/DashboardAuthGuard";
+import { RoleRouteGuard } from "@/components/dashboard/RoleRouteGuard";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <DashboardAuthGuard>
-      <div className="flex min-h-screen bg-zinc-50 dark:bg-zinc-950">
+      <RoleRouteGuard>
+      <div className="flex h-screen min-h-0 overflow-hidden bg-zinc-50 dark:bg-zinc-950">
         {/* Mobile header: menu + logo */}
         <header className="fixed left-0 right-0 top-0 z-40 flex h-14 shrink-0 items-center gap-3 border-b border-zinc-200 bg-white px-4 dark:border-zinc-800 dark:bg-zinc-900 md:hidden">
           <button
@@ -47,12 +49,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           onMobileClose={() => setMobileMenuOpen(false)}
         />
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col pt-14 md:pt-0">
-          <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pt-14 md:pt-0">
+          <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
             {children}
           </main>
         </div>
       </div>
+      </RoleRouteGuard>
     </DashboardAuthGuard>
   );
 }

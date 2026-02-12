@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Body, Query, UseGuards, ForbiddenException } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/user.decorator';
 import { JWTPayload } from '../common/types';
@@ -27,14 +27,14 @@ export class SettingsController {
   @Patch('profile')
   async updateProfile(
     @CurrentUser() user: JWTPayload,
-    @Body() body: { fullName?: string; timezone?: string; currency?: string },
+    @Body() body: { fullName?: string; timezone?: string; currency?: string; avatarUrl?: string | null },
   ) {
     return this.settings.updateProfile(user.sub!, body);
   }
 
   @Get('organization')
   async getOrganization(@CurrentUser() user: JWTPayload, @Query('orgId') orgId?: string) {
-    return this.settings.getOrganization(user.sub!, orgId);
+    return this.settings.getOrganization(user.sub!, orgId, user);
   }
 
   @Patch('organization')
@@ -50,8 +50,10 @@ export class SettingsController {
     },
   ) {
     const { orgId, compliance, quality, ...org } = body;
-    if (!orgId) return this.settings.getOrganization(user.sub!);
-    return this.settings.updateOrganization(user.sub!, orgId, {
+    if (!orgId) return this.settings.getOrganization(user.sub!, undefined, user);
+    const effectiveOrgId = await this.settings.resolveOrgId(user, orgId);
+    if (!effectiveOrgId) throw new ForbiddenException('Organization context required');
+    return this.settings.updateOrganization(user.sub!, effectiveOrgId, {
       ...org,
       compliance,
       quality,

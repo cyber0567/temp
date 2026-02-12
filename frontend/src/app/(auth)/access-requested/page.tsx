@@ -1,36 +1,47 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, Check, Loader2 } from "lucide-react";
 import { AuthCard } from "@/components/ui/AuthCard";
 import { useUser } from "@/contexts/UserContext";
+import { clearAllCaches } from "@/lib/api";
 
 export default function AccessRequestedPage() {
   const router = useRouter();
-  const { user, loading } = useUser();
+  const { user, loading, refetch } = useUser();
+  const [refetchDone, setRefetchDone] = useState(false);
+
+  // Refetch on mount so we pick up the token just set by verify-email (UserProvider may have loaded before token existed)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const token = localStorage.getItem("token");
+    if (token) {
+      refetch().finally(() => setRefetchDone(true));
+    } else {
+      setRefetchDone(true);
+    }
+  }, [refetch]);
 
   useEffect(() => {
-    if (loading) return;
-    if (!user) router.replace("/login");
-  }, [user, loading, router]);
+    if (loading && !refetchDone) return;
+    if (!user && refetchDone) router.replace("/login");
+  }, [user, loading, refetchDone, router]);
 
   if (loading || !user) {
+    const waitingForRefetch = typeof window !== "undefined" && localStorage.getItem("token") && !refetchDone;
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F8F9FB]">
         <div className="flex flex-col items-center gap-3 text-zinc-500">
           <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="text-sm">Loading…</span>
+          <span className="text-sm">{waitingForRefetch ? "Loading…" : "Redirecting…"}</span>
         </div>
       </div>
     );
   }
 
   function handleSwitchAccount() {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-    }
+    clearAllCaches();
     router.replace("/login");
   }
 

@@ -23,7 +23,8 @@
     "@nestjs/platform-express": "^10.4.15",
     "@nestjs/platform-ws": "^10.4.15",
     "@nestjs/websockets": "^10.4.15",
-    "@prisma/client": "^6.9.0",
+    "@prisma/adapter-pg": "^7.4.0",
+    "@prisma/client": "^7.4.0",
     "@ringcentral/sdk": "^5.0.6",
     "@supabase/supabase-js": "^2.45.0",
     "@types/bcrypt": "^6.0.0",
@@ -44,6 +45,6 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "prisma": "^6.9.0"
+    "prisma": "^7.4.0"
   }
 }

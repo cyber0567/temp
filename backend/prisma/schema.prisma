@@ -7,9 +7,7 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
 }
 
 enum OrgRole {
@@ -29,21 +27,25 @@ model User {
   email          String    @unique
   passwordHash   String    @map("password_hash")
   supabaseUserId String?   @unique @map("supabase_user_id") @db.Uuid
+  emailVerified  Boolean   @default(false) @map("email_verified")
   createdAt      DateTime  @default(now()) @map("created_at")
   @@map("users")
 }
 
 model Profile {
-  id           String        @id // text: custom id (e.g. uuid or google-xxx)
-  email        String?
-  fullName     String?       @map("full_name")
-  avatarUrl    String?       @map("avatar_url")
-  provider     String?
-  platformRole PlatformRole @default(rep) @map("platform_role")
-  timezone     String?       @default("UTC")
-  currency     String?       @default("USD")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
+  id             String        @id // same as User.id
+  email          String?
+  fullName       String?       @map("full_name")
+  avatarUrl      String?       @map("avatar_url")
+  provider       String?
+  platformRole   PlatformRole  @default(rep) @map("platform_role")
+  active         Boolean       @default(true)
+  organizationId String?       @map("organization_id") @db.Uuid
+  timezone       String?       @default("UTC")
+  currency       String?       @default("USD")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   @@map("profiles")
 }
 
@@ -56,9 +58,25 @@ model Organization {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   members     OrganizationMember[]
+  profiles    Profile[]
+  invitations Invitation[]
   compliance  OrgComplianceSettings?
   quality     OrgQualitySettings?
   @@map("organizations")
+}
+
+model Invitation {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String
+  orgId     String   @map("org_id") @db.Uuid
+  invitedBy String  @map("invited_by")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  @@index([email])
+  @@index([token])
+  @@map("invitations")
 }
 
 model OrganizationMember {

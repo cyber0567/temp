@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Mail, Lock } from "lucide-react";
 import { AuthCard } from "@/components/ui/AuthCard";
@@ -10,18 +10,30 @@ import { Input } from "@/components/ui/Input";
 import { Separator } from "@/components/ui/Separator";
 import { SwpLogo } from "@/components/auth/SwpLogo";
 import { validateEmail, validatePassword } from "@/lib/validation";
+import { getDashboardRedirectForRole } from "@/lib/roles";
 import { api, API_URL, type ApiError } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
+
+  useEffect(() => {
+    const errorFromUrl = searchParams.get("error");
+    if (errorFromUrl) {
+      setFormError(decodeURIComponent(errorFromUrl));
+      router.replace("/login", { scroll: false });
+    }
+  }, [searchParams, router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submittingRef.current) return;
     const emailError = validateEmail(email);
     const passwordError = validatePassword(password, 1);
     const newErrors: { email?: string; password?: string } = {};
@@ -31,6 +43,7 @@ export default function LoginPage() {
     setFormError(null);
     if (emailError || passwordError) return;
 
+    submittingRef.current = true;
     setLoading(true);
     setFormError(null);
     try {
@@ -41,23 +54,27 @@ export default function LoginPage() {
           localStorage.setItem("token", token);
           localStorage.setItem("user", JSON.stringify(res.user));
         }
-        router.push("/dashboard");
+        router.push(getDashboardRedirectForRole(res.user.platformRole));
         return;
       }
     } catch (err) {
       const apiErr = err as ApiError;
-      setFormError("Invalid email or password");
+      const message = apiErr.message ?? "";
+      setFormError(
+        message.toLowerCase().includes("deactivated")
+          ? "Your account has been deactivated. Please contact SWP super admin"
+          : "Invalid email or password"
+      );
       if (apiErr.errors) {
         setErrors((prev) => ({ ...prev, ...apiErr.errors }));
       }
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   }
 
-  function handleGoogleSignIn() {
-    window.location.href = `${API_URL}/auth/google`;
-  }
+  const googleAuthUrl = `${API_URL}/auth/google`;
 
   return (
     <AuthCard>
@@ -73,14 +90,12 @@ export default function LoginPage() {
         </div>
 
         <div className="text-left">
-          <Button
-            variant="secondary"
-            size="lg"
-            fullWidth
-            type="button"
-            disabled={loading}
-            onClick={handleGoogleSignIn}
-            leftIcon={
+          <form method="get" action={googleAuthUrl} className="block w-full">
+            <button
+              type="submit"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 text-base font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+              aria-label="Continue with Google"
+            >
               <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
                 <path
                   fill="#4285F4"
@@ -99,10 +114,9 @@ export default function LoginPage() {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                 />
               </svg>
-            }
-          >
-            Continue with Google
-          </Button>
+              Continue with Google
+            </button>
+          </form>
         </div>
 
         <Separator text="OR" className="text-gray-400" />
@@ -138,10 +152,10 @@ export default function LoginPage() {
           />
           {formError && (
             <div
-              className="w-full rounded-lg border border-red-200 bg-red-50 py-3 text-center text-sm font-medium text-red-600"
+              className="w-full rounded-lg border border-red-200 bg-red-50 py-3 px-4 text-center text-sm font-medium text-red-600"
               role="alert"
             >
-              Invalid email or password
+              {formError}
             </div>
           )}
           <Button
@@ -150,6 +164,7 @@ export default function LoginPage() {
             size="lg"
             fullWidth
             disabled={loading}
+            aria-busy={loading}
           >
             {loading ? "Signing in…" : "Sign in"}
           </Button>
