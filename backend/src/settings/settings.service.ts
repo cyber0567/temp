@@ -15,7 +15,7 @@ export class SettingsService {
     return profile?.organizationId ?? null;
   }
 
-  /** Resolve org for request: SUPER_ADMIN can use any org; USER/ADMIN only their primary org. */
+  /** Resolve org for request: SUPER_ADMIN can use any org; ADMIN/REP only orgs they are a member of. */
   async resolveOrgId(user: JWTPayload, requestedOrgId?: string): Promise<string | null> {
     const userId = user?.sub;
     if (!userId) return null;
@@ -23,11 +23,17 @@ export class SettingsService {
     if (isSuperAdmin) {
       return requestedOrgId ?? (await this.getPrimaryOrgId(userId)) ?? (await this.getDefaultOrgId(userId));
     }
-    const primary = user.orgId ?? (await this.getPrimaryOrgId(userId));
-    if (requestedOrgId && requestedOrgId !== primary) {
-      throw new ForbiddenException('You can only access your organization');
+    if (requestedOrgId) {
+      const member = await this.prisma.organizationMember.findUnique({
+        where: { orgId_userId: { orgId: requestedOrgId, userId } },
+        select: { orgId: true },
+      });
+      if (!member) {
+        throw new ForbiddenException('You can only access organizations you belong to');
+      }
+      return requestedOrgId;
     }
-    return primary ?? null;
+    return user.orgId ?? (await this.getPrimaryOrgId(userId)) ?? (await this.getDefaultOrgId(userId)) ?? null;
   }
 
   /** Get user's first org id for org-scoped settings (fallback when no primary). */

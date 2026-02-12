@@ -29,10 +29,16 @@ export class OrgRoleGuard implements CanActivate {
     const userId = request.user?.sub;
     if (!userId) throw new UnauthorizedException('Authentication required');
 
-    // Multi-tenant: USER/ADMIN can only access their primary org
     const platformRole = request.user?.platformRole;
+    if (platformRole === 'super_admin') {
+      request.orgId = orgId;
+      request.orgRole = 'admin';
+      return true;
+    }
+
+    // Multi-tenant: USER/ADMIN can only access their primary org
     const userOrgId = request.user?.orgId;
-    if (platformRole !== 'super_admin' && userOrgId && userOrgId !== orgId) {
+    if (userOrgId && userOrgId !== orgId) {
       throw new ForbiddenException('You can only access your organization');
     }
 

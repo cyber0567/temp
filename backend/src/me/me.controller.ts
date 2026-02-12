@@ -15,7 +15,7 @@ export class MeController {
     if (!userId) {
       return { user: null, orgs: [] };
     }
-    const [profile, members] = await Promise.all([
+    const [profile, members, allOrgs] = await Promise.all([
       this.prisma.profile.findUnique({
         where: { id: userId },
         select: {
@@ -30,6 +30,10 @@ export class MeController {
         where: { userId },
         select: { orgId: true, role: true, org: { select: { id: true, name: true, slug: true } } },
       }),
+      this.prisma.organization.findMany({
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true, slug: true },
+      }),
     ]);
     const platformRole = profile?.platformRole ?? 'rep';
     const fullName = profile?.fullName ?? null;
@@ -38,12 +42,15 @@ export class MeController {
     const organization = profile?.organization
       ? { id: profile.organization.id, name: profile.organization.name, slug: profile.organization.slug }
       : null;
-    const orgs = members.map((m) => ({
-      id: m.org.id,
-      name: m.org.name,
-      slug: m.org.slug,
-      role: m.role,
-    }));
+    const orgs =
+      platformRole === 'super_admin'
+        ? allOrgs.map((o) => ({ id: o.id, name: o.name, slug: o.slug, role: 'admin' as const }))
+        : members.map((m) => ({
+            id: m.org.id,
+            name: m.org.name,
+            slug: m.org.slug,
+            role: m.role,
+          }));
     return {
       user: {
         id: user.sub,

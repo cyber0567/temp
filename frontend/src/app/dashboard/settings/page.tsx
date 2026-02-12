@@ -315,7 +315,7 @@ export default function SettingsPage() {
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 dark:border-zinc-300 dark:bg-white dark:text-zinc-900"
+                  className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 dark:border-zinc-300 dark:bg-white dark:text-zinc-900"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -323,8 +323,8 @@ export default function SettingsPage() {
                 <input
                   type="email"
                   value={user?.email ?? ""}
-                  readOnly
-                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-600 dark:border-zinc-200 dark:bg-zinc-50 dark:text-zinc-600"
+                  disabled
+                  className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -332,8 +332,8 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   value={getPlatformRoleLabel(user?.platformRole) ?? "—"}
-                  readOnly
-                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-600 dark:border-zinc-200 dark:bg-zinc-50 dark:text-zinc-600"
+                  disabled
+                  className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -341,7 +341,7 @@ export default function SettingsPage() {
                 <select
                   value={timezone}
                   onChange={(e) => setTimezone(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 dark:border-zinc-300 dark:bg-white dark:text-zinc-900"
+                  className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 dark:border-zinc-300 dark:bg-white dark:text-zinc-900"
                 >
                   {TIMEZONES.map((tz) => (
                     <option key={tz.value} value={tz.value}>{tz.label}</option>
@@ -353,7 +353,7 @@ export default function SettingsPage() {
                 <select
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 dark:border-zinc-300 dark:bg-white dark:text-zinc-900"
+                  className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 dark:border-zinc-300 dark:bg-white dark:text-zinc-900"
                 >
                   {CURRENCIES.map((c) => (
                     <option key={c.value} value={c.value}>{c.label}</option>
@@ -375,12 +375,12 @@ export default function SettingsPage() {
             <p className="mt-4 text-sm text-gray-500 dark:text-zinc-400">You are not in any organization yet.</p>
           ) : (
             <div className="mt-6 space-y-6">
-              {!isOrgAdminForCurrentOrg && (
+              {!isOrgAdminForCurrentOrg && user?.platformRole !== "super_admin" && (
                 <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
                   Only organization admins can edit these settings. Your profile and notifications are still saved when you click Save.
                 </p>
               )}
-              {orgs && orgs.length > 1 && (
+              {orgs && orgs.length > 0 && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">Organization</label>
                   <select
@@ -406,7 +406,8 @@ export default function SettingsPage() {
                   value={orgName}
                   onChange={(e) => setOrgName(e.target.value)}
                   placeholder="e.g. SalesOS Enterprise"
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500"
+                  disabled={!isOrgAdminForCurrentOrg}
+                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500"
                 />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -415,7 +416,8 @@ export default function SettingsPage() {
                   <select
                     value={industry}
                     onChange={(e) => setIndustry(e.target.value)}
-                    className="mt-1 w-full appearance-none rounded-lg border border-gray-300 bg-white px-3 py-2 pr-9 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                    disabled={!isOrgAdminForCurrentOrg}
+                    className="mt-1 w-full appearance-none rounded-lg border border-gray-300 bg-white px-3 py-2 pr-9 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
                   >
                     <option value="">Select industry</option>
                     {INDUSTRIES.map((i) => (
@@ -428,7 +430,8 @@ export default function SettingsPage() {
                   <select
                     value={companySize}
                     onChange={(e) => setCompanySize(e.target.value)}
-                    className="mt-1 w-full appearance-none rounded-lg border border-gray-300 bg-white px-3 py-2 pr-9 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                    disabled={!isOrgAdminForCurrentOrg}
+                    className="mt-1 w-full appearance-none rounded-lg border border-gray-300 bg-white px-3 py-2 pr-9 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
                   >
                     <option value="">Select size</option>
                     {COMPANY_SIZES.map((s) => (
@@ -481,7 +484,7 @@ export default function SettingsPage() {
             <p className="mt-4 text-sm text-gray-500">Organization required.</p>
           ) : (
             <>
-              {!isOrgAdminForCurrentOrg && (
+              {!isOrgAdminForCurrentOrg && user?.platformRole !== "super_admin" && (
                 <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
                   Only organization admins can edit these settings.
                 </p>
@@ -526,7 +529,7 @@ export default function SettingsPage() {
             <p className="mt-4 text-sm text-gray-500">Organization required.</p>
           ) : (
             <>
-              {!isOrgAdminForCurrentOrg && (
+              {!isOrgAdminForCurrentOrg && user?.platformRole !== "super_admin" && (
                 <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
                   Only organization admins can edit these settings.
                 </p>

@@ -158,8 +158,9 @@ export class OrgsController {
   ) {
     const currentUserId = user?.sub;
     if (!currentUserId) throw new ForbiddenException('Authentication required');
+    const isSuperAdmin = user.platformRole === 'super_admin';
     const isSelf = targetUserId === currentUserId;
-    if (!isSelf) {
+    if (!isSelf && !isSuperAdmin) {
       const member = await this.prisma.organizationMember.findUnique({
         where: { orgId_userId: { orgId, userId: currentUserId } },
       });
