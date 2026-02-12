@@ -1,4 +1,8 @@
-import { CampaignCommandCenter } from "@/components/dashboard/CampaignCommandCenter";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+};
 
 export default function DashboardPage() {
   return (

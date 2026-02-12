@@ -105,11 +105,11 @@ export function DashboardSidebar() {
   const { user, platformRole, orgs } = useUser();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     Talent: true,
-    Campaigns: true,
-    "Call Center": true,
-    Training: true,
-    Compliance: true,
-    Analytics: true,
+    Campaigns: false,
+    "Call Center": false,
+    Training: false,
+    Compliance: false,
+    Analytics: false,
   });
 
   function handleLogout() {
@@ -120,7 +120,9 @@ export function DashboardSidebar() {
     router.push("/login");
   }
 
-  const toggle = (label: string) => {
+  const toggle = (e: React.MouseEvent, label: string) => {
+    e.preventDefault();
+    e.stopPropagation();
     setExpanded((prev) => ({ ...prev, [label]: !prev[label] }));
   };
 
@@ -154,7 +156,7 @@ export function DashboardSidebar() {
                   <>
                     <button
                       type="button"
-                      onClick={() => toggle(item.label)}
+                      onClick={(e) => toggle(e, item.label)}
                       className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                         isActive
                           ? "bg-zinc-800 text-zinc-100"
