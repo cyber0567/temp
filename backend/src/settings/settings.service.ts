@@ -1,5 +1,4 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
-import type { PrismaClient } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JWTPayload } from '../common/types';
 
@@ -99,7 +98,7 @@ export class SettingsService {
         currency: updates.currency ?? 'USD',
         avatarUrl: updates.avatarUrl ?? null,
         platformRole: 'rep',
-      },
+      } as any,
       update: Object.keys(updates).length ? updates : {},
     });
     return this.getProfile(userId);
@@ -117,7 +116,7 @@ export class SettingsService {
     });
     if (!org) return { organization: null, compliance: null, quality: null };
 
-    const prisma = this.prisma as unknown as PrismaClient;
+    const prisma = this.prisma as any;
     const [compliance, quality] = await Promise.all([
       prisma.orgComplianceSettings.findUnique({ where: { orgId: oid } }),
       prisma.orgQualitySettings.findUnique({ where: { orgId: oid } }),
@@ -183,7 +182,7 @@ export class SettingsService {
       });
     }
 
-    const prisma = this.prisma as unknown as PrismaClient;
+    const prisma = this.prisma as any;
     if (data.compliance) {
       await prisma.orgComplianceSettings.upsert({
         where: { orgId },
@@ -222,7 +221,7 @@ export class SettingsService {
   }
 
   async getNotifications(userId: string) {
-    const prisma = this.prisma as unknown as PrismaClient;
+    const prisma = this.prisma as any;
     const row = await prisma.userNotificationSettings.findUnique({
       where: { userId },
     });
@@ -238,7 +237,7 @@ export class SettingsService {
     userId: string,
     data: { emailAlerts?: boolean; flaggedCalls?: boolean; dailyDigest?: boolean; weeklyReport?: boolean },
   ) {
-    const prisma = this.prisma as unknown as PrismaClient;
+    const prisma = this.prisma as any;
     await prisma.userNotificationSettings.upsert({
       where: { userId },
       create: {

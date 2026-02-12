@@ -6,7 +6,6 @@ import {
   UseGuards,
   BadRequestException,
 } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PlatformRoleGuard } from '../common/guards/platform-role.guard';
@@ -113,7 +112,7 @@ export class SuperAdminController {
       throw new BadRequestException('A user with this email already exists');
     }
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-    const user = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const user = await this.prisma.$transaction(async (tx: any) => {
       const u = await tx.user.create({
         data: { email: normalizedEmail, passwordHash },
         select: { id: true, email: true },

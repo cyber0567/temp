@@ -10,7 +10,7 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
-import type { Profile, PrismaClient } from '@prisma/client';
+import type { Profile } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -55,7 +55,7 @@ export class AdminController {
       throw new ForbiddenException('Organization context required');
     }
     const profiles = await this.prisma.profile.findMany({
-      where: isSuperAdmin ? undefined : { organizationId: orgId },
+      where: (isSuperAdmin ? undefined : { organizationId: orgId }) as any,
       orderBy: { updatedAt: 'desc' },
       take: 500,
       select: { id: true, email: true, fullName: true, platformRole: true, provider: true, active: true },
@@ -78,7 +78,7 @@ export class AdminController {
     if (userId === currentUser.sub) {
       throw new BadRequestException('You cannot remove your own account');
     }
-    const prisma = this.prisma as unknown as PrismaClient;
+    const prisma = this.prisma as any;
     await this.prisma.$transaction([
       prisma.organizationMember.deleteMany({ where: { userId } }),
       prisma.ringcentralToken.deleteMany({ where: { userId } }),
