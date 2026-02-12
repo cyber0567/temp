@@ -213,7 +213,7 @@ export class AuthController {
   ) {
     const { code, state } = req.query;
     if (!code || !state) {
-      return res.redirect(`${env.frontendUrl}/dashboard?error=ringcentral_missing_code`);
+      return res.redirect(`${env.frontendUrl}/dashboard/rep-portal/dialer?error=ringcentral_missing_code`);
     }
     let userId: string;
     try {
@@ -221,11 +221,11 @@ export class AuthController {
         secret: env.sessionSecret,
       });
       if (!decoded?.userId) {
-        return res.redirect(`${env.frontendUrl}/dashboard?error=ringcentral_invalid_state`);
+        return res.redirect(`${env.frontendUrl}/dashboard/rep-portal/dialer?error=ringcentral_invalid_state`);
       }
       userId = decoded.userId;
     } catch {
-      return res.redirect(`${env.frontendUrl}/dashboard?error=ringcentral_invalid_state`);
+      return res.redirect(`${env.frontendUrl}/dashboard/rep-portal/dialer?error=ringcentral_invalid_state`);
     }
     try {
       const platform = this.ringCentral.getSDK().platform();
@@ -238,7 +238,7 @@ export class AuthController {
       const refreshToken = (token as { refresh_token?: string }).refresh_token;
       const expiresIn = (token as { expires_in?: number }).expires_in ?? 3600;
       if (!accessToken || !refreshToken) {
-        return res.redirect(`${env.frontendUrl}/dashboard?error=ringcentral_no_tokens`);
+        return res.redirect(`${env.frontendUrl}/dashboard/rep-portal/dialer?error=ringcentral_no_tokens`);
       }
       const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
       await this.supabase.getClient().from('ringcentral_tokens').upsert(
@@ -251,10 +251,10 @@ export class AuthController {
         },
         { onConflict: 'user_id' },
       );
-      return res.redirect(`${env.frontendUrl}/dashboard?ringcentral=connected`);
+      return res.redirect(`${env.frontendUrl}/dashboard/rep-portal/dialer?rc=connected`);
     } catch (e) {
       console.error('RingCentral OAuth error:', e);
-      return res.redirect(`${env.frontendUrl}/dashboard?error=ringcentral_failed`);
+      return res.redirect(`${env.frontendUrl}/dashboard/rep-portal/dialer?error=ringcentral_failed`);
     }
   }
 
@@ -275,10 +275,10 @@ export class AuthController {
     const { data } = await this.supabase
       .getClient()
       .from('ringcentral_tokens')
-      .select('id')
+      .select('id, expires_at')
       .eq('user_id', user.sub)
       .single();
-    return { connected: !!data };
+    return { connected: !!data, expiresAt: data?.expires_at ?? null };
   }
 
   @Delete('ringcentral')

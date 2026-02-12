@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Phone,
@@ -18,8 +18,11 @@ import {
   MessageCircle,
   Check,
   Activity,
+  Link2,
+  Link2Off,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { api } from "@/lib/api";
 
 /** URL structure:
  *  /dashboard/rep-portal           = first screen (Rep Portal home)
@@ -90,6 +93,45 @@ export function DemoDialerContent({ callState }: Props) {
   const [callNotes, setCallNotes] = useState("");
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  /** RingCentral: required to make calls. User-specific OAuth. */
+  const [rcConnected, setRcConnected] = useState<boolean | null>(null);
+  const [rcConnecting, setRcConnecting] = useState(false);
+
+  const fetchRcStatus = useCallback(() => {
+    api
+      .getRingCentralStatus()
+      .then(({ connected }) => setRcConnected(connected))
+      .catch(() => setRcConnected(false));
+  }, []);
+
+  useEffect(() => {
+    fetchRcStatus();
+  }, [fetchRcStatus]);
+
+  // Handle OAuth callback: ?rc=connected — refetch status and clear param
+  useEffect(() => {
+    if (searchParams.get("rc") === "connected") {
+      fetchRcStatus();
+      router.replace(DIALER_BASE, { scroll: false });
+    }
+  }, [searchParams.get("rc"), fetchRcStatus, router]);
+
+  const handleConnectRingCentral = async () => {
+    setRcConnecting(true);
+    try {
+      // Redirect to backend → backend redirects to RingCentral (never expose client secret)
+      const { url } = await api.getRingCentralInitUrl();
+      window.location.href = url;
+    } catch (e) {
+      setRcConnecting(false);
+      console.error("RingCentral connect failed:", e);
+    }
+  };
+
+  const rcError = searchParams.get("error")?.startsWith("ringcentral")
+    ? searchParams.get("error")?.replace("ringcentral_", "").replace(/_/g, " ")
+    : null;
+
   useEffect(() => {
     const handleReset = () => {
       router.replace(DIALER_BASE);
@@ -143,15 +185,85 @@ export function DemoDialerContent({ callState }: Props) {
   const isActive = callState === "in_progress";
   const isEnded = callState === "ended";
 
+  const showDialer = rcConnected === true;
+
   return (
     <div className="min-h-full bg-gray-100/80 pb-20">
       <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">Demo Dialer</h1>
-          <p className="mt-1 text-sm text-gray-500">Practice calls with AI scenarios</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">Demo Dialer</h1>
+            <p className="mt-1 text-sm text-gray-500">Practice calls with AI scenarios</p>
+          </div>
+          {/* RingCentral Status — top right, visible but not intrusive */}
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 shadow-sm">
+              <span className="text-sm font-medium text-gray-700">RingCentral:</span>
+              {rcConnected === null ? (
+                <span className="text-sm text-gray-500">Checking…</span>
+              ) : rcConnected ? (
+                <>
+                  <span className="flex items-center gap-1 text-sm text-emerald-600">
+                    <Link2 className="h-4 w-4" /> Connected
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-gray-300"
+                    onClick={handleConnectRingCentral}
+                    disabled={rcConnecting}
+                  >
+                    Reconnect
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <span className="flex items-center gap-1 text-sm text-red-600">
+                    <Link2Off className="h-4 w-4" /> Not Connected
+                  </span>
+                  <Button
+                    size="sm"
+                    className="bg-emerald-600 text-white hover:bg-emerald-700"
+                    onClick={handleConnectRingCentral}
+                    disabled={rcConnecting}
+                  >
+                    {rcConnecting ? "Connecting…" : "Connect"}
+                  </Button>
+                </>
+              )}
+            </div>
+            {rcError && (
+              <p className="text-xs text-red-600" role="alert">
+                Connection failed: {rcError}
+              </p>
+            )}
+          </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,320px)_1fr]">
+        {/* Case 1 — Not Connected: Show connect CTA, disable dialer */}
+        {rcConnected === false && (
+          <div
+            className="rounded-xl border-2 border-dashed border-amber-200 bg-amber-50 p-8 text-center"
+            role="region"
+            aria-label="Connect RingCentral"
+          >
+            <Link2Off className="mx-auto h-12 w-12 text-amber-500" />
+            <h2 className="mt-3 text-lg font-semibold text-gray-900">Connect RingCentral to Start Calling</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              Link your RingCentral account to use the dialer, call controls, and live transcript.
+            </p>
+            <Button
+              className="mt-4 bg-emerald-600 text-white hover:bg-emerald-700"
+              leftIcon={<Link2 className="h-5 w-5" />}
+              onClick={handleConnectRingCentral}
+              disabled={rcConnecting}
+            >
+              {rcConnecting ? "Redirecting…" : "Connect RingCentral"}
+            </Button>
+          </div>
+        )}
+
+        <div className={`grid gap-6 lg:grid-cols-[minmax(0,320px)_1fr] ${!showDialer ? "pointer-events-none opacity-60" : ""}`}>
           <section className={cardBase}>
             <div className="flex flex-col items-center gap-4 p-6">
               <div className="flex flex-col items-center gap-2">
