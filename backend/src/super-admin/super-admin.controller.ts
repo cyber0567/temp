@@ -6,6 +6,7 @@ import {
   UseGuards,
   BadRequestException,
 } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PlatformRoleGuard } from '../common/guards/platform-role.guard';
@@ -36,8 +37,9 @@ export class SuperAdminController {
         _count: { select: { profiles: true, members: true } },
       },
     });
+    type OrgWithCount = { id: string; name: string; slug: string; industry: string | null; companySize: string | null; createdAt: Date; _count: { profiles: number; members: number } };
     return {
-      organizations: orgs.map((o) => ({
+      organizations: (orgs as OrgWithCount[]).map((o: OrgWithCount) => ({
         id: o.id,
         name: o.name,
         slug: o.slug,
@@ -64,8 +66,9 @@ export class SuperAdminController {
         organization: { select: { id: true, name: true, slug: true } },
       },
     });
+    type ProfileWithOrg = { id: string; email: string | null; fullName: string | null; platformRole: string; organizationId: string | null; organization: { id: string; name: string; slug: string } | null };
     return {
-      users: profiles.map((p) => ({
+      users: (profiles as ProfileWithOrg[]).map((p: ProfileWithOrg) => ({
         id: p.id,
         email: p.email ?? undefined,
         full_name: p.fullName ?? undefined,
@@ -110,7 +113,7 @@ export class SuperAdminController {
       throw new BadRequestException('A user with this email already exists');
     }
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-    const user = await this.prisma.$transaction(async (tx) => {
+    const user = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const u = await tx.user.create({
         data: { email: normalizedEmail, passwordHash },
         select: { id: true, email: true },

@@ -1,4 +1,5 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
+import type { PrismaClient } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JWTPayload } from '../common/types';
 
@@ -93,6 +94,7 @@ export class SettingsService {
       create: {
         id: userId,
         fullName: updates.fullName ?? null,
+        organizationId: null,
         timezone: updates.timezone ?? 'UTC',
         currency: updates.currency ?? 'USD',
         avatarUrl: updates.avatarUrl ?? null,
@@ -115,9 +117,10 @@ export class SettingsService {
     });
     if (!org) return { organization: null, compliance: null, quality: null };
 
+    const prisma = this.prisma as unknown as PrismaClient;
     const [compliance, quality] = await Promise.all([
-      this.prisma.orgComplianceSettings.findUnique({ where: { orgId: oid } }),
-      this.prisma.orgQualitySettings.findUnique({ where: { orgId: oid } }),
+      prisma.orgComplianceSettings.findUnique({ where: { orgId: oid } }),
+      prisma.orgQualitySettings.findUnique({ where: { orgId: oid } }),
     ]);
 
     return {
@@ -180,8 +183,9 @@ export class SettingsService {
       });
     }
 
+    const prisma = this.prisma as unknown as PrismaClient;
     if (data.compliance) {
-      await this.prisma.orgComplianceSettings.upsert({
+      await prisma.orgComplianceSettings.upsert({
         where: { orgId },
         create: {
           orgId,
@@ -198,7 +202,7 @@ export class SettingsService {
     }
 
     if (data.quality) {
-      await this.prisma.orgQualitySettings.upsert({
+      await prisma.orgQualitySettings.upsert({
         where: { orgId },
         create: {
           orgId,
@@ -218,7 +222,8 @@ export class SettingsService {
   }
 
   async getNotifications(userId: string) {
-    const row = await this.prisma.userNotificationSettings.findUnique({
+    const prisma = this.prisma as unknown as PrismaClient;
+    const row = await prisma.userNotificationSettings.findUnique({
       where: { userId },
     });
     return {
@@ -233,7 +238,8 @@ export class SettingsService {
     userId: string,
     data: { emailAlerts?: boolean; flaggedCalls?: boolean; dailyDigest?: boolean; weeklyReport?: boolean },
   ) {
-    await this.prisma.userNotificationSettings.upsert({
+    const prisma = this.prisma as unknown as PrismaClient;
+    await prisma.userNotificationSettings.upsert({
       where: { userId },
       create: {
         userId,

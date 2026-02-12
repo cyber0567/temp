@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Mail, Lock } from "lucide-react";
@@ -13,7 +13,7 @@ import { validateEmail, validatePassword } from "@/lib/validation";
 import { getDashboardRedirectForRole } from "@/lib/roles";
 import { api, API_URL, type ApiError } from "@/lib/api";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -180,5 +180,28 @@ export default function LoginPage() {
         </div>
       </div>
     </AuthCard>
+  );
+}
+
+function LoginFallback() {
+  return (
+    <AuthCard>
+      <div className="flex flex-col gap-6 text-center">
+        <SwpLogo />
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Welcome to SWP OS V1</h1>
+          <p className="mt-1 text-sm text-gray-500">Sign in to continue</p>
+        </div>
+        <div className="py-8 text-sm text-gray-500">Loading…</div>
+      </div>
+    </AuthCard>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFallback />}>
+      <LoginContent />
+    </Suspense>
   );
 }

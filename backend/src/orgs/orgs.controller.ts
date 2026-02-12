@@ -33,8 +33,9 @@ export class OrgsController {
       where: { userId },
       select: { orgId: true, role: true, org: { select: { id: true, name: true, slug: true } } },
     });
+    type MemberWithOrg = { orgId: string; role: string; org: { id: string; name: string; slug: string } };
     return {
-      orgs: members.map((m) => ({ id: m.org.id, name: m.org.name, slug: m.org.slug, role: m.role })),
+      orgs: (members as MemberWithOrg[]).map((m) => ({ id: m.org.id, name: m.org.name, slug: m.org.slug, role: m.role })),
     };
   }
 
@@ -71,16 +72,17 @@ export class OrgsController {
       where: { orgId },
       select: { userId: true, role: true, createdAt: true },
     });
-    const userIds = members.map((m) => m.userId);
+    const userIds = (members as { userId: string; role: string; createdAt: Date }[]).map((m) => m.userId);
     const profiles = userIds.length
       ? await this.prisma.profile.findMany({
           where: { id: { in: userIds } },
           select: { id: true, email: true, fullName: true },
         })
       : [];
-    const profileByUserId = new Map(profiles.map((p) => [p.id, p]));
+    type ProfileRow = { id: string; email: string | null; fullName: string | null };
+    const profileByUserId = new Map<string, ProfileRow>(profiles.map((p: ProfileRow) => [p.id, p]));
     return {
-      members: members.map((m) => {
+      members: (members as { userId: string; role: string; createdAt: Date }[]).map((m) => {
         const profile = profileByUserId.get(m.userId);
         return {
           user_id: m.userId,

@@ -10,6 +10,7 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
+import type { Profile, PrismaClient } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -60,7 +61,7 @@ export class AdminController {
       select: { id: true, email: true, fullName: true, platformRole: true, provider: true, active: true },
     });
     return {
-      users: profiles.map((p) => ({
+      users: profiles.map((p: Pick<Profile, 'id' | 'email' | 'fullName' | 'platformRole' | 'provider' | 'active'>) => ({
         id: p.id,
         email: p.email ?? undefined,
         full_name: p.fullName ?? undefined,
@@ -77,12 +78,13 @@ export class AdminController {
     if (userId === currentUser.sub) {
       throw new BadRequestException('You cannot remove your own account');
     }
+    const prisma = this.prisma as unknown as PrismaClient;
     await this.prisma.$transaction([
-      this.prisma.organizationMember.deleteMany({ where: { userId } }),
-      this.prisma.ringcentralToken.deleteMany({ where: { userId } }),
-      this.prisma.userNotificationSettings.deleteMany({ where: { userId } }),
-      this.prisma.profile.deleteMany({ where: { id: userId } }),
-      this.prisma.user.deleteMany({ where: { id: userId } }),
+      prisma.organizationMember.deleteMany({ where: { userId } }),
+      prisma.ringcentralToken.deleteMany({ where: { userId } }),
+      prisma.userNotificationSettings.deleteMany({ where: { userId } }),
+      prisma.profile.deleteMany({ where: { id: userId } }),
+      prisma.user.deleteMany({ where: { id: userId } }),
     ]);
     return { ok: true };
   }
